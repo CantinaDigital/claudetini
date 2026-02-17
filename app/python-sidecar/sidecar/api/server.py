@@ -49,6 +49,7 @@ from .routes import (
     live_sessions,
     logs,
     parallel,
+    product_map,
     project,
     readiness,
     reconciliation,
@@ -113,6 +114,7 @@ app.include_router(readiness.router, prefix="/api", tags=["readiness"])
 app.include_router(bootstrap.router, prefix="/api", tags=["bootstrap"])
 app.include_router(parallel.router, prefix="/api/parallel", tags=["parallel"])
 app.include_router(intelligence.router, prefix="/api", tags=["intelligence"])
+app.include_router(product_map.router, prefix="/api", tags=["product-map"])
 
 
 @app.get("/health")

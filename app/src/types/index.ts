@@ -831,6 +831,7 @@ export interface CategoryScore {
   finding_count: number;
   critical_count: number;
   warning_count: number;
+  top_finding?: string;
 }
 
 export interface IntelligenceSummary {
@@ -851,10 +852,49 @@ export interface IntelligenceReport {
   freshness: FreshnessReport;
   features: FeatureInventory;
   summary: IntelligenceSummary;
-  top_issues: Array<{ issue: string; severity: string; file_path?: string }>;
+  top_issues: Array<{
+    issue: string;
+    severity: string;
+    file_path?: string;
+    line_number?: number;
+    dim?: string;
+    issue_type?: string;
+  }>;
+  category_scores?: CategoryScore[];
+  total_files_scanned?: number;
   scan_duration_ms: number;
   scans_completed: number;
   scans_failed: number;
+}
+
+// ============================================
+// Product Map Types
+// ============================================
+
+export interface ProductFeature {
+  name: string;
+  status: string;
+  readiness: number;
+  desc: string;
+  integrations: string[];
+  files: number;
+  tests: number;
+  roadmapRef: string | null;
+  lastTouched: string;
+  momentum: { commits: number; period: string };
+  trend: number;
+  lastSession: string | null;
+  readinessDetail: Array<{ dim: string; have: string; need: string }>;
+  lacks: string[];
+  dependsOn: string[];
+  dependedBy: string[];
+}
+
+export interface ProductMapResponse {
+  project_path: string;
+  generated_at: string;
+  features: ProductFeature[];
+  avg_readiness: number;
 }
 
 

@@ -176,6 +176,7 @@ class CategoryScoreResponse(BaseModel):
     finding_count: int
     critical_count: int
     warning_count: int
+    top_finding: str | None = None
 
 
 class IntelligenceSummaryResponse(BaseModel):
@@ -199,6 +200,9 @@ class TopIssueResponse(BaseModel):
     issue: str
     severity: str
     file_path: str | None = None
+    dim: str | None = None
+    line_number: int | None = None
+    issue_type: str | None = None
 
 
 class IntelligenceReportResponse(BaseModel):
@@ -214,6 +218,8 @@ class IntelligenceReportResponse(BaseModel):
     features: FeatureInventoryResponse
     summary: IntelligenceSummaryResponse
     top_issues: list[TopIssueResponse]
+    category_scores: list[CategoryScoreResponse] = []
+    total_files_scanned: int = 0
     scan_duration_ms: int
     scans_completed: int
     scans_failed: int
@@ -501,6 +507,7 @@ def _build_top_issues(
     hardcoded: HardcodedScanResultResponse,
     dep_ecosystems: list[DependencyEcosystemResponse],
     freshness: FreshnessReportResponse,
+    features: FeatureInventoryResponse | None = None,
 ) -> list[TopIssueResponse]:
     """Build a list of top issues, sorted by severity."""
     issues: list[TopIssueResponse] = []
@@ -511,6 +518,9 @@ def _build_top_issues(
                 issue=f.suggestion or f.matched_text,
                 severity=f.severity,
                 file_path=f.file_path,
+                dim="hardcoded",
+                line_number=f.line_number,
+                issue_type=f.category.upper(),
             ))
 
     for eco in dep_ecosystems:
@@ -519,6 +529,16 @@ def _build_top_issues(
                 issues.append(TopIssueResponse(
                     issue=f"{v.title} ({v.package_name})",
                     severity=v.severity,
+                    dim="dependency",
+                    issue_type="VULNERABILITY",
+                ))
+        for dep in eco.outdated:
+            if dep.update_severity == "major":
+                issues.append(TopIssueResponse(
+                    issue=f"Outdated: {dep.name} {dep.current_version} → {dep.latest_version}",
+                    severity="warning",
+                    dim="dependency",
+                    issue_type="OUTDATED",
                 ))
 
     for f in freshness.abandoned_files:
@@ -526,7 +546,30 @@ def _build_top_issues(
             issue=f"Abandoned file: {f.file_path} ({f.days_since_modified} days)",
             severity="warning",
             file_path=f.file_path,
+            dim="freshness",
+            issue_type="ABANDONED",
         ))
+
+    # Feature-based issues
+    if features:
+        for coupled in features.most_coupled:
+            import_count = coupled.get("import_count", 0)
+            if import_count > 10:
+                issues.append(TopIssueResponse(
+                    issue=f"High coupling: {coupled.get('name', 'unknown')} ({import_count} dependents)",
+                    severity="warning",
+                    dim="feature",
+                    issue_type="HIGH_COUPLING",
+                ))
+        for uf in features.untracked_features:
+            issues.append(TopIssueResponse(
+                issue=f"Untracked feature: {uf.feature.name} ({uf.reason})",
+                severity="info",
+                file_path=uf.feature.file_path,
+                dim="feature",
+                line_number=uf.feature.line_number,
+                issue_type="UNTRACKED",
+            ))
 
     # Sort: critical first, then warning
     severity_order = {"critical": 0, "high": 1, "warning": 2}
@@ -587,6 +630,52 @@ def _build_light_summary(
             return "D"
         return "F"
 
+    # Generate top_finding per dimension
+    hc_top_finding: str | None = None
+    if hc_critical > 0:
+        first_crit = next((f for f in hardcoded.findings if f.severity == "critical"), None)
+        if first_crit:
+            hc_top_finding = first_crit.suggestion or first_crit.matched_text
+    elif len(hardcoded.findings) > 0:
+        hc_top_finding = f"{len(hardcoded.findings)} hardcoded values found"
+
+    dep_top_finding: str | None = None
+    for eco in dep_ecosystems:
+        for v in eco.vulnerabilities:
+            if v.severity in ("critical", "high"):
+                dep_top_finding = v.title
+                break
+        if dep_top_finding:
+            break
+    if not dep_top_finding and dep_finding_count > 0:
+        total_outdated = sum(len(eco.outdated) for eco in dep_ecosystems)
+        dep_top_finding = f"{total_outdated} outdated packages"
+
+    int_top_finding: str | None = None
+    if total_integrations > 0:
+        service_count = len(integrations.services_detected)
+        int_top_finding = f"{service_count} services auto-mapped"
+
+    fresh_top_finding: str | None = None
+    n_stale = len(freshness.stale_files)
+    n_abandoned = len(freshness.abandoned_files)
+    if n_stale > 0 or n_abandoned > 0:
+        parts = []
+        if n_stale > 0:
+            parts.append(f"{n_stale} stale")
+        if n_abandoned > 0:
+            parts.append(f"{n_abandoned} abandoned")
+        fresh_top_finding = ", ".join(parts)
+    else:
+        fresh_top_finding = "All files fresh"
+
+    feat_top_finding: str | None = None
+    if features.most_coupled:
+        top = features.most_coupled[0]
+        feat_top_finding = f"Most coupled: {top.get('name', 'unknown')}"
+    elif features.untracked_features:
+        feat_top_finding = f"{len(features.untracked_features)} untracked features"
+
     categories = [
         CategoryScoreResponse(
             category="hardcoded",
@@ -595,6 +684,7 @@ def _build_light_summary(
             finding_count=len(hardcoded.findings),
             critical_count=hc_critical,
             warning_count=hc_warning,
+            top_finding=hc_top_finding,
         ),
         CategoryScoreResponse(
             category="dependency",
@@ -603,6 +693,7 @@ def _build_light_summary(
             finding_count=dep_finding_count,
             critical_count=dep_critical,
             warning_count=dep_warning_count,
+            top_finding=dep_top_finding,
         ),
         CategoryScoreResponse(
             category="integration",
@@ -611,6 +702,7 @@ def _build_light_summary(
             finding_count=total_integrations,
             critical_count=0,
             warning_count=0,
+            top_finding=int_top_finding,
         ),
         CategoryScoreResponse(
             category="freshness",
@@ -619,6 +711,7 @@ def _build_light_summary(
             finding_count=len(freshness.stale_files) + len(freshness.abandoned_files),
             critical_count=len(freshness.abandoned_files),
             warning_count=len(freshness.stale_files),
+            top_finding=fresh_top_finding,
         ),
         CategoryScoreResponse(
             category="feature",
@@ -627,6 +720,7 @@ def _build_light_summary(
             finding_count=features.total_features,
             critical_count=0,
             warning_count=0,
+            top_finding=feat_top_finding,
         ),
     ]
 
@@ -758,7 +852,15 @@ async def scan_intelligence(request: ScanRequest) -> IntelligenceReportResponse:
         overall_score, grade = _compute_score_and_grade(
             hardcoded, dep_ecosystems, integrations, freshness, features,
         )
-        top_issues = _build_top_issues(hardcoded, dep_ecosystems, freshness)
+        top_issues = _build_top_issues(hardcoded, dep_ecosystems, freshness, features)
+
+        # Build category scores with top_finding
+        light_summary = _build_light_summary(
+            hardcoded, dep_ecosystems, integrations, freshness, features,
+        )
+
+        # Compute total files scanned
+        total_files_scanned = hardcoded.scanned_file_count + integrations.files_scanned
 
         elapsed_ms = int((time.monotonic() - start_time) * 1000)
 
@@ -774,6 +876,8 @@ async def scan_intelligence(request: ScanRequest) -> IntelligenceReportResponse:
             features=features,
             summary=summary,
             top_issues=top_issues,
+            category_scores=light_summary.categories,
+            total_files_scanned=total_files_scanned,
             scan_duration_ms=elapsed_ms,
             scans_completed=scans_completed,
             scans_failed=scans_failed,

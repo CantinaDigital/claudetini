@@ -8,6 +8,7 @@ import { GitTab } from "./components/git/GitTab";
 import { TimelineTab } from "./components/timeline/TimelineTab";
 import { GatesTab } from "./components/gates/GatesTab";
 import IntelligenceTab from "./components/intelligence/IntelligenceTab";
+import { ProductMapTab } from "./components/product-map/ProductMapTab";
 import { LogsTab } from "./components/logs/LogsTab";
 import { SettingsTab } from "./components/settings/SettingsTab";
 import { FallbackModal } from "./components/dispatch/FallbackModal";
@@ -37,7 +38,7 @@ import { useProjectManager } from "./managers/projectManager";
 import { useParallelManager } from "./managers/parallelManager";
 import { ParallelExecutionOverlay } from "./components/roadmap/ParallelExecutionOverlay";
 
-const TABS = ["Overview", "Roadmap", "Timeline", "Git", "Intelligence", "Quality Gates", "Logs", "Settings"];
+const TABS = ["Overview", "Roadmap", "Timeline", "Git", "Intelligence", "Product Map", "Quality Gates", "Logs", "Settings"];
 
 /**
  * Global error boundary — prevents any component crash from producing a black screen.
@@ -497,7 +498,7 @@ IMPORTANT: Do NOT make any code changes yet. Instead:
   };
 
   const handleNavigateToSettings = () => {
-    setActiveTab(7);
+    setActiveTab(8);
   };
 
   const handleNavigateToGit = () => {
@@ -643,34 +644,39 @@ Only modify the minimum files needed. Run the ${gateName.toLowerCase()} gate aft
       </div>
       <div className={activeTab === 4 ? 'block' : 'hidden'}>
         <TabErrorBoundary tabName="Intelligence">
-          <IntelligenceTab />
+          <IntelligenceTab onFix={handleFix} />
         </TabErrorBoundary>
       </div>
       <div className={activeTab === 5 ? 'block' : 'hidden'}>
+        <TabErrorBoundary tabName="Product Map">
+          <ProductMapTab onFix={handleFix} />
+        </TabErrorBoundary>
+      </div>
+      <div className={activeTab === 6 ? 'block' : 'hidden'}>
         <TabErrorBoundary tabName="Quality Gates">
           <GatesTab
             projectPath={activeProjectPath}
-            isActive={activeTab === 5}
+            isActive={activeTab === 6}
             onFix={handleFix}
             onNavigateToSettings={handleNavigateToSettings}
           />
         </TabErrorBoundary>
       </div>
-      <div className={activeTab === 6 ? 'block' : 'hidden'}>
+      <div className={activeTab === 7 ? 'block' : 'hidden'}>
         <TabErrorBoundary tabName="Logs">
           <LogsTab
             projectPath={activeProjectPath}
-            isActive={activeTab === 6}
+            isActive={activeTab === 7}
             onFix={handleFix}
             onShowConfirm={showConfirmDialog}
           />
         </TabErrorBoundary>
       </div>
-      <div className={activeTab === 7 ? 'block' : 'hidden'}>
+      <div className={activeTab === 8 ? 'block' : 'hidden'}>
         <TabErrorBoundary tabName="Settings">
           <SettingsTab
             projectPath={activeProjectPath}
-            isActive={activeTab === 7}
+            isActive={activeTab === 8}
             backendConnected={backendConnected}
             onShowConfirm={showConfirmDialog}
           />

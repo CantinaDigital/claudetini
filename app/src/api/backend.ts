@@ -33,6 +33,7 @@ import type {
   ParallelBatchStatus,
   IntelligenceReport,
   CategoryScore,
+  ProductMapResponse,
 } from "../types";
 
 // Backend API configuration
@@ -953,6 +954,23 @@ export const api = {
         body: JSON.stringify({ project_path: projectPath }),
         timeoutMs: 60000,
       }
+    ),
+
+  // =====================================
+  // Product Map
+  // =====================================
+
+  scanProductMap: (projectPath: string) =>
+    fetchApi<ProductMapResponse>("/api/product-map/scan", {
+      method: "POST",
+      body: JSON.stringify({ project_path: projectPath }),
+      timeoutMs: 180000,
+    }),
+
+  getProductMap: (projectPath: string) =>
+    fetchApi<ProductMapResponse>(
+      `/api/product-map/${encodeURIComponent(projectPath)}`,
+      { timeoutMs: 10000 }
     ),
 
   // =====================================
