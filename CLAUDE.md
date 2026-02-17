@@ -36,6 +36,10 @@ claudetini/                      # Monorepo root
     └── python-sidecar/             # FastAPI backend
 ```
 
+## Design Philosophy: Intelligence, Not Dashboards
+
+A view that presents raw data is not intelligence. Intelligence means: "here's what matters, here's what's getting worse, here's where to focus." Build a dashboard, not a database browser.
+
 ## Code Conventions
 
 ### Python (src/core/, src/agents/, python-sidecar/)

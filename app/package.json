@@ -10,8 +10,8 @@
     "tauri": "tauri",
     "kill-ports": "lsof -ti:1420,9876 | xargs kill -9 2>/dev/null || true",
     "backend": "cd python-sidecar && python3 -m uvicorn sidecar.api.server:app --port 9876 --host 127.0.0.1",
-    "dev:all": "npm run kill-ports && concurrently -k -n backend,frontend -c blue,green \"npm run backend\" \"npm run dev\"",
-    "tauri:dev": "npm run kill-ports && concurrently -k -n backend,tauri -c blue,green \"npm run backend\" \"npm run tauri dev\""
+    "dev:all": "npm install && npm run kill-ports && concurrently -k -n backend,frontend -c blue,green \"npm run backend\" \"npm run dev\"",
+    "tauri:dev": "npm install && npm run kill-ports && concurrently -k -n backend,tauri -c blue,green \"npm run backend\" \"npm run tauri dev\""
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

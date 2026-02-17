@@ -172,31 +172,14 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -e ".[dev]"
 ```
 
-### 3. Install frontend dependencies
-
-```bash
-cd app
-npm install
-```
-
-### 4. Install Tauri CLI (if not already installed)
-
-```bash
-cargo install tauri-cli
-```
-
----
-
-## Usage
-
-### Full Desktop App (Recommended)
+### 3. Run the app
 
 ```bash
 cd app
 npm run tauri:dev
 ```
 
-This starts the Python backend (port 9876), Vite dev server (port 1420), and the Tauri desktop window. First build takes 2-3 minutes for Rust compilation.
+Frontend dependencies are installed automatically on first run. This starts the Python backend (port 9876), Vite dev server (port 1420), and the Tauri desktop window. First build takes 2-3 minutes for Rust compilation.
 
 ### Browser Mode (For Development)
 
@@ -322,8 +305,7 @@ git clone https://github.com/cantina-digital/claudetini.git
 cd claudetini
 python -m venv venv && source venv/bin/activate
 pip install -e ".[dev]"
-cd app && npm install
-npm run tauri:dev
+cd app && npm run tauri:dev
 ```
 
 ---

@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    cantinaclaude_app_lib::run()
+    claudetini_app_lib::run()
 }
