@@ -77,14 +77,22 @@ def test_dispatch_task_marks_token_limit_result(monkeypatch, temp_dir) -> None:
 
     monkeypatch.setattr(dispatcher_module, "project_id_for_path", lambda _path: "proj-test")
     monkeypatch.setattr(dispatcher_module, "project_runtime_dir", lambda _project_id: temp_dir / "runtime")
+
+    # dispatcher uses subprocess.Popen (not subprocess.run) with streaming stdout
+    token_limit_msg = "Usage limit reached. Please wait until your limit resets.\n"
+    lines = iter([token_limit_msg, ""])
+
+    mock_popen = SimpleNamespace(
+        stdout=SimpleNamespace(readline=lambda: next(lines)),
+        poll=lambda: 1,
+        returncode=1,
+        kill=lambda: None,
+        wait=lambda: None,
+    )
     monkeypatch.setattr(
         dispatcher_module.subprocess,
-        "run",
-        lambda *_args, **_kwargs: SimpleNamespace(
-            returncode=1,
-            stdout="Usage limit reached. Please wait until your limit resets.",
-            stderr="",
-        ),
+        "Popen",
+        lambda *_args, **_kwargs: mock_popen,
     )
 
     result = dispatch_task("Implement fallback flow", project)

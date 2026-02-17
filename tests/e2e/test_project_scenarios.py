@@ -286,24 +286,39 @@ class TestNoGit:
 # FIXTURE 7: Dirty Git
 # =============================================================================
 class TestDirtyGit:
-    """Tests for project with uncommitted changes."""
+    """Tests for project with uncommitted changes.
+
+    The fixture directory has no .git (nested .git dirs can't be committed),
+    so we set up git state at test time in a tmp_path copy.
+    """
 
     @pytest.fixture
-    def project_path(self) -> Path:
-        return FIXTURES_DIR / "07_dirty_git"
+    def project_path(self, tmp_path) -> Path:
+        project = tmp_path / "dirty_git"
+        project.mkdir()
+        # Set up a git repo with committed base, then dirty it
+        subprocess.run(["git", "init"], cwd=project, check=True, capture_output=True)
+        subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=project, check=True, capture_output=True)
+        subprocess.run(["git", "config", "user.name", "Test User"], cwd=project, check=True, capture_output=True)
+        (project / "README.md").write_text("# Dirty Git Project\n")
+        (project / "ROADMAP.md").write_text("# Roadmap\n\n## Tasks\n- [x] Initial setup\n- [ ] Clean up\n")
+        subprocess.run(["git", "add", "."], cwd=project, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=project, check=True, capture_output=True)
+        # Now make it dirty
+        (project / "README.md").write_text("# Dirty Git Project\n\nModified but not committed.\n")
+        (project / "untracked.txt").write_text("This file is untracked\n")
+        (project / "src").mkdir()
+        (project / "src" / "new_file.py").write_text("# New untracked file\n")
+        return project
 
     def test_uncommitted_detected(self, project_path):
         """Should detect uncommitted changes."""
-        if not project_path.exists():
-            pytest.skip("Fixture not generated")
         git = GitUtils(project_path)
         uncommitted = git.uncommitted_files()
         assert len(uncommitted) > 0
 
     def test_untracked_detected(self, project_path):
         """Should detect untracked files."""
-        if not project_path.exists():
-            pytest.skip("Fixture not generated")
         git = GitUtils(project_path)
         # untracked.txt and src/new_file.py should be untracked
         uncommitted = git.uncommitted_files()

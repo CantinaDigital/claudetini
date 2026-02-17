@@ -176,8 +176,6 @@ async def async_dispatch_stream(
             except TimeoutError:
                 proc.kill()
                 await proc.wait()
-        yield ("status", "Dispatch cancelled.")
-        yield ("complete", "cancelled")
         raise
     except Exception as exc:
         yield ("error", str(exc))
