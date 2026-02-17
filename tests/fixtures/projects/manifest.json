@@ -1,0 +1,54 @@
+{
+  "fixtures": [
+    {
+      "name": "01_empty_project",
+      "path": "./tests/fixtures/projects/01_empty_project",
+      "description": "Fresh project with only git init, no roadmap, no CLAUDE.md."
+    },
+    {
+      "name": "02_single_roadmap",
+      "path": "./tests/fixtures/projects/02_single_roadmap",
+      "description": "Clean project with one ROADMAP.md - ideal state."
+    },
+    {
+      "name": "03_multiple_sources",
+      "path": "./tests/fixtures/projects/03_multiple_sources",
+      "description": "Project with multiple conflicting planning files."
+    },
+    {
+      "name": "04_completed_project",
+      "path": "./tests/fixtures/projects/04_completed_project",
+      "description": "Project with all roadmap items completed."
+    },
+    {
+      "name": "05_partial_progress",
+      "path": "./tests/fixtures/projects/05_partial_progress",
+      "description": "Project with some milestones complete, some in progress."
+    },
+    {
+      "name": "06_no_git",
+      "path": "./tests/fixtures/projects/06_no_git",
+      "description": "Project without git initialization."
+    },
+    {
+      "name": "07_dirty_git",
+      "path": "./tests/fixtures/projects/07_dirty_git",
+      "description": "Project with uncommitted changes and untracked files."
+    },
+    {
+      "name": "08_quality_failures",
+      "path": "./tests/fixtures/projects/08_quality_failures",
+      "description": "Project with code that would fail quality gates."
+    },
+    {
+      "name": "09_large_roadmap",
+      "path": "./tests/fixtures/projects/09_large_roadmap",
+      "description": "Project with many milestones and items."
+    },
+    {
+      "name": "10_already_consolidated",
+      "path": "./tests/fixtures/projects/10_already_consolidated",
+      "description": "Project that has already been consolidated - single source of truth."
+    }
+  ]
+}

@@ -1,0 +1,160 @@
+Generate a comprehensive CLAUDE.md file for this project.
+
+## Purpose
+
+CLAUDE.md provides instructions and context for Claude Code when working on this project. It should be:
+- **Specific** to this project (not generic boilerplate)
+- **Actionable** with concrete examples
+- **Comprehensive** covering architecture, conventions, and commands
+- **Maintained** as a living document
+
+## Required Sections
+
+### 1. Project Overview (2-3 paragraphs)
+
+```markdown
+# [Project Name]
+
+> [One-line tagline describing what this project does]
+
+## Project Overview
+
+[Describe what this project does, who it's for, and why it exists.
+Include the problem it solves and key value propositions.]
+
+[Mention the tech stack and any unique architectural decisions.]
+```
+
+### 2. Architecture
+
+```markdown
+## Architecture
+
+[High-level system design. Use diagrams where helpful.]
+
+**Key Components:**
+- Component A: [Responsibility]
+- Component B: [Responsibility]
+
+**Data Flow:**
+[How data moves through the system]
+
+**External Dependencies:**
+- Dependency 1: [Purpose]
+- Dependency 2: [Purpose]
+```
+
+### 3. Code Conventions
+
+```markdown
+## Code Conventions
+
+### [Language] Specifics
+- Naming: [snake_case, camelCase, PascalCase rules]
+- File organization: [Where do different types of files go?]
+- Import order: [How to order imports]
+
+### Patterns & Practices
+- [Key design patterns used]
+- [Error handling approach]
+- [State management approach (if applicable)]
+
+### Example:
+```[language]
+// Show a concrete example of well-formatted code
+```
+```
+
+### 4. Testing Strategy
+
+```markdown
+## Testing
+
+### Running Tests
+```bash
+[Command to run tests]
+```
+
+### Coverage Expectations
+- Minimum coverage: [percentage]
+- Critical paths must have: [unit/integration/e2e tests]
+
+### Writing Tests
+[Guidelines for writing tests, with example]
+```
+
+### 5. Development Workflow
+
+```markdown
+## Development Workflow
+
+### Setup
+```bash
+# Clone and install
+[Commands to get started]
+```
+
+### Common Commands
+```bash
+# Development server
+[command]
+
+# Build
+[command]
+
+# Lint
+[command]
+
+# Format
+[command]
+```
+
+### Git Workflow
+- Branch naming: [convention]
+- Commit messages: [convention]
+- PR requirements: [checklist]
+```
+
+### 6. Planning & Progress Tracking (IMPORTANT)
+
+```markdown
+## Planning & Progress Tracking
+
+**Source of Truth:** `.claude/planning/ROADMAP.md`
+
+- All tasks tracked in ROADMAP.md with checkbox format
+- Mark items `[x]` when complete
+- Add new tasks under appropriate milestones
+- Keep managed section in sync with ROADMAP state
+
+**IMPORTANT:** Do NOT create stray planning documents (PLAN.md, TODO.md, etc.)
+All planned work must be in the master roadmap.
+```
+
+## Content Guidelines
+
+1. **Be Project-Specific**:
+   - Reference actual files, directories, and patterns from THIS project
+   - Include real examples from the codebase
+   - Don't use placeholder text like "[Your API]"
+
+2. **Show, Don't Tell**:
+   - Include code snippets showing conventions
+   - Provide actual command examples that work
+   - Link to specific files as references
+
+3. **Keep Updated**:
+   - Include "Last updated" date
+   - Encourage updates as project evolves
+   - Mark sections that may change
+
+4. **Consider the Audience**:
+   - Written for Claude Code AND human developers
+   - Explain WHY, not just WHAT
+   - Include context for architectural decisions
+
+## Output
+
+Create the file at: `CLAUDE.md` (project root)
+
+Make it useful - this is the first thing Claude Code reads when starting work.

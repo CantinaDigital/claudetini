@@ -1,0 +1,28 @@
+Analyze this project and provide a concise assessment.
+
+## What to analyze:
+
+1. **Project Type**: Programming language(s) and framework(s) used
+2. **Purpose**: What does this project do? What domain/problem does it solve?
+3. **Key Technologies**: Main dependencies, build tools, deployment targets
+4. **Current State**:
+   - Is this a new/empty project?
+   - Is it in active development?
+   - Is it mature/production-ready?
+5. **Existing Documentation**:
+   - Does it have a README?
+   - Are there architectural docs?
+   - Is there inline documentation/comments?
+
+## Output Format:
+
+Provide a brief, structured summary (5-8 bullet points max):
+
+- **Type**: [Language/Framework]
+- **Purpose**: [One sentence describing what it does]
+- **Stack**: [Key technologies]
+- **State**: [New/In-progress/Mature]
+- **Docs**: [Current documentation quality]
+- **Notable patterns**: [Any important architectural patterns or conventions observed]
+
+Keep it concise and actionable - this will inform the roadmap and CLAUDE.md generation.

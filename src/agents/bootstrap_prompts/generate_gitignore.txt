@@ -1,0 +1,260 @@
+Generate a comprehensive .gitignore file for this project.
+
+## Purpose
+
+The .gitignore file prevents committing unnecessary or sensitive files to version control.
+
+## What to Include
+
+Based on the detected project type and technologies, include patterns for:
+
+### 1. Language-Specific Build Artifacts
+
+**Python:**
+```
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+```
+
+**JavaScript/Node.js:**
+```
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.eslintcache
+dist/
+build/
+.next/
+out/
+.nuxt/
+.cache/
+```
+
+**Rust:**
+```
+target/
+Cargo.lock
+**/*.rs.bk
+```
+
+**Go:**
+```
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output of go build
+*.out
+
+# Dependency directories
+vendor/
+```
+
+**Java:**
+```
+*.class
+*.jar
+*.war
+*.ear
+target/
+.gradle/
+build/
+```
+
+### 2. Dependency Directories
+
+```
+node_modules/
+venv/
+env/
+.venv/
+vendor/
+bower_components/
+```
+
+### 3. IDE and Editor Files
+
+```
+# VSCode
+.vscode/
+*.code-workspace
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+```
+
+### 4. Operating System Files
+
+```
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+.Trash-*
+```
+
+### 5. Environment and Secrets
+
+```
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+*.pem
+*.key
+secrets.yml
+config/secrets.yml
+```
+
+### 6. Logs
+
+```
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+```
+
+### 7. Test Coverage
+
+```
+coverage/
+.nyc_output/
+htmlcov/
+.coverage
+.coverage.*
+.pytest_cache/
+.tox/
+```
+
+### 8. Build and Distribution
+
+```
+dist/
+build/
+out/
+*.egg-info/
+*.whl
+```
+
+### 9. Cache Directories
+
+```
+.cache/
+.parcel-cache/
+.sass-cache/
+*.cache
+```
+
+### 10. Project-Specific Patterns
+
+[Add any patterns specific to this project's needs]
+
+## Guidelines
+
+1. **Be Comprehensive**: Include all common patterns for the detected stack
+2. **Be Specific**: Only include patterns relevant to THIS project
+3. **Comment Sections**: Group related patterns with comments
+4. **Don't Overdo It**: Don't ignore files that should be committed (like package-lock.json)
+
+## What NOT to Ignore
+
+These should typically be committed:
+- `package-lock.json` (Node.js) - ensures consistent dependencies
+- `Gemfile.lock` (Ruby) - locks gem versions
+- `Pipfile.lock` (Python) - locks Python dependencies
+- `yarn.lock` - locks Yarn dependencies
+- Configuration files (unless they contain secrets)
+
+## Output Format
+
+```gitignore
+# [Project Type] .gitignore
+# Generated: [Date]
+
+# Language-specific
+[patterns]
+
+# Dependencies
+[patterns]
+
+# IDEs and Editors
+[patterns]
+
+# Operating Systems
+[patterns]
+
+# Environment variables and secrets
+[patterns]
+
+# Logs
+[patterns]
+
+# Test coverage
+[patterns]
+
+# Build artifacts
+[patterns]
+```
+
+## Output
+
+Create the file at: `.gitignore` (project root)
+
+**IMPORTANT**: Do NOT overwrite an existing .gitignore - only create if missing.

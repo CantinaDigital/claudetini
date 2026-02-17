@@ -1,0 +1,11 @@
+# Development dependencies
+-r requirements.txt
+
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-qt>=4.2.0
+ruff>=0.1.0
+mypy>=1.6.0
+
+# Optional: for security gate
+bandit>=1.7.0

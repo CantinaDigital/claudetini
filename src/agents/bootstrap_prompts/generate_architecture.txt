@@ -1,0 +1,239 @@
+Generate comprehensive architecture documentation for this project.
+
+## Purpose
+
+The ARCHITECTURE.md file explains the high-level design, component relationships, and key architectural decisions. It helps new developers (and AI assistants) quickly understand how the system works.
+
+## Target Audience
+
+- New developers joining the project
+- Claude Code when making architectural changes
+- Future maintainers reviewing design decisions
+
+## Required Sections
+
+### 1. Overview
+
+```markdown
+# Architecture
+
+> Last updated: [Date]
+
+## Overview
+
+[2-3 paragraphs explaining the system at a high level]
+
+**Key Goals:**
+- [Primary architectural goal 1]
+- [Primary architectural goal 2]
+- [Primary architectural goal 3]
+```
+
+### 2. System Architecture
+
+```markdown
+## System Architecture
+
+[Describe the overall system design. Use diagrams!]
+
+### Architecture Diagram
+
+```mermaid
+graph TD
+    A[Component A] --> B[Component B]
+    B --> C[Component C]
+    C --> D[External Service]
+```
+
+### Components
+
+#### Component Name
+- **Purpose**: [What does it do?]
+- **Location**: [Where is the code?]
+- **Key Responsibilities**: [Main functions]
+- **Dependencies**: [What does it depend on?]
+
+[Repeat for each major component]
+```
+
+### 3. Data Flow
+
+```markdown
+## Data Flow
+
+[Explain how data moves through the system]
+
+### Example Flow: [User Action]
+
+1. User triggers [action]
+2. Component A [processes]
+3. Data flows to Component B via [mechanism]
+4. Component B [performs operation]
+5. Result returned to user
+
+```mermaid
+sequenceDiagram
+    User->>ComponentA: Request
+    ComponentA->>ComponentB: Process
+    ComponentB->>Database: Store
+    Database-->>ComponentB: Confirm
+    ComponentB-->>User: Response
+```
+```
+
+### 4. Key Design Decisions
+
+```markdown
+## Key Design Decisions
+
+### Decision: [Title]
+
+**Context**: [Why was this decision needed?]
+
+**Options Considered**:
+1. Option A: [Pros/Cons]
+2. Option B: [Pros/Cons]
+
+**Decision**: We chose [Option] because [reasoning]
+
+**Consequences**: [Trade-offs we accepted]
+
+[Repeat for each major architectural decision]
+```
+
+### 5. Technology Stack
+
+```markdown
+## Technology Stack
+
+### Core Technologies
+- **Language**: [e.g., Python 3.11+]
+- **Framework**: [e.g., FastAPI, React, etc.]
+- **Database**: [e.g., PostgreSQL, MongoDB]
+- **Deployment**: [e.g., Docker, AWS Lambda]
+
+### Key Libraries
+- Library 1: [Purpose]
+- Library 2: [Purpose]
+
+### Infrastructure
+- [Cloud provider / hosting]
+- [CI/CD tools]
+- [Monitoring / observability]
+```
+
+### 6. Directory Structure
+
+```markdown
+## Directory Structure
+
+```
+project-root/
+├── src/
+│   ├── core/           # Core business logic
+│   ├── api/            # API endpoints
+│   ├── models/         # Data models
+│   └── utils/          # Shared utilities
+├── tests/              # Test suites
+├── docs/               # Documentation
+└── scripts/            # Build/deploy scripts
+```
+
+**Key Directories:**
+- `src/core/`: [Description]
+- `src/api/`: [Description]
+[Continue for important directories]
+```
+
+### 7. Deployment Architecture
+
+```markdown
+## Deployment Architecture
+
+[Explain how the system is deployed in production]
+
+### Environments
+- **Development**: [How it runs locally]
+- **Staging**: [Pre-production environment]
+- **Production**: [Live environment]
+
+### Deployment Process
+1. [Step 1]
+2. [Step 2]
+3. [Step 3]
+
+### Infrastructure Diagram
+
+```mermaid
+graph LR
+    A[Load Balancer] --> B[App Server 1]
+    A --> C[App Server 2]
+    B --> D[(Database)]
+    C --> D
+```
+```
+
+### 8. Security & Performance Considerations
+
+```markdown
+## Security Considerations
+
+- **Authentication**: [How we handle auth]
+- **Data Protection**: [Encryption, PII handling]
+- **API Security**: [Rate limiting, validation]
+
+## Performance Considerations
+
+- **Caching Strategy**: [What we cache and why]
+- **Scalability**: [How the system scales]
+- **Bottlenecks**: [Known performance constraints]
+```
+
+### 9. Future Considerations
+
+```markdown
+## Future Considerations
+
+### Planned Improvements
+- [Architectural improvement 1]
+- [Architectural improvement 2]
+
+### Known Limitations
+- [Limitation 1]: [Why it exists, when we'll address it]
+- [Limitation 2]: [Why it exists, when we'll address it]
+
+### Scalability Roadmap
+- [How the architecture will evolve as system grows]
+```
+
+## Content Guidelines
+
+1. **Use Diagrams**: Mermaid diagrams are highly effective
+   - Architecture diagrams
+   - Sequence diagrams
+   - Data flow diagrams
+
+2. **Be Honest**: Include limitations and trade-offs
+   - What doesn't work well?
+   - What would you change if starting over?
+   - What are the known technical debt areas?
+
+3. **Provide Context**: Explain WHY decisions were made
+   - Not just "We use PostgreSQL"
+   - But "We use PostgreSQL because we need ACID guarantees for financial transactions"
+
+4. **Real Examples**: Reference actual code
+   - Link to specific files
+   - Show code snippets demonstrating patterns
+   - Include real configuration examples
+
+5. **Keep Updated**: Mark sections that change frequently
+   - Date the document
+   - Encourage updates when architecture changes
+   - Note when sections are outdated
+
+## Output
+
+Create the file at: `docs/ARCHITECTURE.md`
+
+Make it comprehensive - this is the technical foundation for understanding the entire system.

@@ -1,0 +1,90 @@
+Generate a comprehensive ROADMAP.md file for this project.
+
+## Context
+
+Based on the project analysis, create a milestone-based roadmap that guides development from current state to a mature, production-ready application.
+
+## Format Requirements
+
+Use GitHub-flavored markdown with checkbox syntax:
+
+```markdown
+# Roadmap
+
+> Last updated: [Current Date]
+
+## Overview
+
+[1-2 sentences describing the roadmap strategy]
+
+## Milestone 1: [Descriptive Name]
+
+**Goal**: [Clear, measurable objective for this milestone]
+
+**Priority**: P0 (Critical path)
+
+### Tasks
+
+- [ ] Task description (specific and actionable)
+- [ ] Another task
+- [ ] ...
+
+**Success Criteria**:
+- [How do we know this milestone is complete?]
+
+## Milestone 2: [Name]
+
+**Goal**: [Objective]
+
+**Priority**: P1
+
+### Tasks
+
+- [ ] ...
+
+[Continue for 3-6 milestones total]
+```
+
+## Content Guidelines
+
+1. **Be Specific**: Tasks should be concrete, not vague
+   - ✅ "Implement user authentication with JWT tokens"
+   - ❌ "Add auth"
+
+2. **Right-size Tasks**: Each task should take 1-4 hours
+   - If larger, break into sub-tasks
+
+3. **Logical Sequencing**: Order milestones by dependency
+   - Foundation → Core Features → Polish → Launch
+
+4. **Context-Aware**:
+   - For NEW projects: Focus on scaffolding, architecture, MVP features
+   - For EXISTING projects: Focus on improvements, missing features, technical debt
+   - For MATURE projects: Focus on optimization, new features, scaling
+
+5. **Include Quality Gates**:
+   - Testing requirements
+   - Documentation requirements
+   - Code review checkpoints
+
+## Milestone Themes (adapt to project needs)
+
+### For New Projects:
+1. Foundation & Setup
+2. Core Architecture
+3. MVP Features
+4. Testing & Documentation
+5. Launch Preparation
+
+### For Existing Projects:
+1. Audit & Assessment
+2. Technical Debt Cleanup
+3. Feature Enhancements
+4. Performance & Optimization
+5. Production Readiness
+
+## Output
+
+Create the roadmap file at: `.claude/planning/ROADMAP.md`
+
+Make it actionable - this is what guides all future development work.
