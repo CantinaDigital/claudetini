@@ -3,7 +3,7 @@
 ![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
 ![Node](https://img.shields.io/badge/node-18+-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
-![Status](https://img.shields.io/badge/status-alpha-orange.svg)
+![Status](https://img.shields.io/badge/status-beta-green.svg)
 
 A desktop dashboard for Claude Code projects. Set up projects the right way, track what happened across sessions, and keep everything healthy — without memorizing terminal commands.
 
