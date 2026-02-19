@@ -873,6 +873,18 @@ export interface IntelligenceReport {
 // Product Map Types
 // ============================================
 
+export interface ActionStep {
+  action: string;
+  effort: string;         // "1 session", "2 sessions"
+  impact: "high" | "medium" | "low";
+}
+
+export interface ReadinessDimension {
+  dim: string;
+  have: number | string;  // number for new data, string for legacy
+  need: number | string;
+}
+
 export interface ProductFeature {
   name: string;
   status: string;
@@ -886,10 +898,14 @@ export interface ProductFeature {
   momentum: { commits: number; period: string };
   trend: number;
   lastSession: string | null;
-  readinessDetail: Array<{ dim: string; have: string; need: string }>;
+  readinessDetail: ReadinessDimension[];
   lacks: string[];
   dependsOn: string[];
   dependedBy: string[];
+  // PM brain fields — Claude-generated
+  whyMatters?: string;
+  riskIfIgnored?: string;
+  actionPlan?: ActionStep[];
 }
 
 export interface ProductMapResponse {

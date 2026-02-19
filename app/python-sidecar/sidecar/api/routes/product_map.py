@@ -35,6 +35,13 @@ class ProductMapScanRequest(BaseModel):
     project_path: str
 
 
+class ActionStepResponse(BaseModel):
+    """A single action step in a feature's action plan."""
+    action: str
+    effort: str = "1 session"  # e.g. "1 session", "2 sessions"
+    impact: str = "medium"  # "high" | "medium" | "low"
+
+
 class ProductFeatureResponse(BaseModel):
     """A single product-level feature."""
     name: str
@@ -53,6 +60,10 @@ class ProductFeatureResponse(BaseModel):
     lacks: list[str] = []
     dependsOn: list[str] = []
     dependedBy: list[str] = []
+    # PM brain fields — Claude-generated analysis
+    whyMatters: str = ""
+    riskIfIgnored: str = ""
+    actionPlan: list[dict] = []  # [{action, effort, impact}]
 
 
 class ProductMapResponse(BaseModel):
@@ -300,13 +311,19 @@ _FEATURE_SCHEMA = """For each user-facing feature or major capability, produce a
 - tests: approximate number of test files/functions covering it
 - integrations: list of external services it calls (e.g. ["GitHub API", "SQLite"])
 - roadmapRef: closest ROADMAP.md milestone reference if any, or null
-- lastTouched: relative time from git log (e.g. "2 days ago", "3 weeks ago")
+- lastTouched: short relative time from git log (e.g. "2d ago", "3w ago", "1mo ago")
 - momentum: { "commits": N, "period": "this week" or "this month" }
-- readinessDetail: [{"dim": "Tests", "have": "3 unit tests", "need": "Integration tests"}, ...]
+- readinessDetail: [{"dim": "Tests", "have": 2, "need": 6}, ...]
   Dimensions: Tests, Error handling, Docs, Edge cases
+  IMPORTANT: "have" and "need" must be numbers (0-100 scale), not strings
 - lacks: specific gaps to production readiness (e.g. ["No rate limiting", "Missing input validation"])
 - dependsOn: other feature names this depends on
-- dependedBy: feature names that depend on this"""
+- dependedBy: feature names that depend on this
+- whyMatters: 1-2 sentences explaining why this feature's current state matters to the overall product. Think like a PM — connect it to dependencies, user impact, and product strategy. Not "low test coverage" but "Dispatch depends on this; with 1 test, gate failures silently pass bad code."
+- riskIfIgnored: 1 sentence on what happens if this stays at current readiness. Be specific and concrete.
+- actionPlan: 2-5 specific next steps to improve this feature. Each entry:
+  { "action": "concrete description", "effort": "1 session" or "2 sessions", "impact": "high" | "medium" | "low" }
+  Impact means: high = blocks other features or fixes critical gap, medium = meaningful improvement, low = nice-to-have."""
 
 
 def _build_full_analysis_prompt(project_path: Path) -> str:
@@ -344,10 +361,10 @@ Here is the existing product map (JSON array):
 
 Your task:
 1. Read ONLY the changed files listed above to understand what changed.
-2. Update any features affected by those changes (readiness, status, files count, tests, lacks, momentum, lastTouched, readinessDetail, etc.)
-3. Add any NEW features that the changes introduced.
+2. Update any features affected by those changes (readiness, status, files count, tests, lacks, momentum, lastTouched, readinessDetail, whyMatters, riskIfIgnored, actionPlan, etc.)
+3. Add any NEW features that the changes introduced (include whyMatters, riskIfIgnored, and actionPlan for new features).
 4. Remove any features that no longer exist due to the changes.
-5. Leave unchanged features exactly as they are.
+5. Leave unchanged features exactly as they are — preserve all fields including whyMatters, riskIfIgnored, and actionPlan.
 
 Output ONLY the complete updated JSON array of ALL features (both changed and unchanged). No markdown, no explanation, no code fences.
 Start with [ and end with ]."""
@@ -407,6 +424,9 @@ def _build_product_map(
                 lacks=f.get("lacks", []),
                 dependsOn=f.get("dependsOn", []),
                 dependedBy=f.get("dependedBy", []),
+                whyMatters=f.get("whyMatters", ""),
+                riskIfIgnored=f.get("riskIfIgnored", ""),
+                actionPlan=f.get("actionPlan", []),
             ))
         except Exception:
             logger.warning("Skipping malformed feature: %s", f.get("name", "?"))
