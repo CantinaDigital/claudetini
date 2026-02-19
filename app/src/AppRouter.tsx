@@ -11,6 +11,7 @@
 import React from 'react';
 import { useEffect, useState } from 'react';
 import { useProjectManager } from './managers/projectManager';
+import { useDispatchManager } from './managers/dispatchManager';
 import { ProjectPickerView } from './components/project/ProjectPickerView';
 import { ScorecardView } from './components/scorecard/ScorecardView';
 import { BootstrapWizard } from './components/bootstrap/BootstrapWizard';
@@ -65,8 +66,17 @@ function AppRouterInner() {
   const isLoading = useProjectManager((s) => s.isLoading);
   const error = useProjectManager((s) => s.error);
   const loadProjects = useProjectManager((s) => s.loadProjects);
+  const resetDispatch = useDispatchManager((s) => s.reset);
   const [backendReady, setBackendReady] = useState(false);
   const [registering, setRegistering] = useState(false);
+
+  // Redirect to picker if dashboard is reached without a project selected.
+  // Uses useEffect to avoid side effects (localStorage write) during render.
+  useEffect(() => {
+    if (currentScreen === 'dashboard' && !currentProject) {
+      setScreen('picker');
+    }
+  }, [currentScreen, currentProject, setScreen]);
 
   // Initialize backend and load projects on mount
   useEffect(() => {
@@ -93,6 +103,7 @@ function AppRouterInner() {
       bootstrapInProgress: false,
       error: null,
     });
+    resetDispatch();
     setScreen('dashboard');
   };
 
@@ -172,10 +183,7 @@ function AppRouterInner() {
 
   // Dashboard Screen (existing app)
   if (currentScreen === 'dashboard') {
-    if (!currentProject) {
-      setScreen('picker');
-      return null;
-    }
+    if (!currentProject) return null; // useEffect will redirect to picker
     return <App />;
   }
 

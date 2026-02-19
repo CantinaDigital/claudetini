@@ -354,7 +354,11 @@ export const useDispatchManager = create<DispatchManagerState>((set, get) => ({
         }
 
         completeDispatch();
-        toast.success("Dispatch Successful", "Claude Code completed the task.");
+        // Only show toast for non-roadmap dispatches; App.tsx handles the
+        // roadmap toast after toggling the item to avoid duplicates.
+        if (!get().lastContext?.itemRef?.text) {
+          toast.success("Dispatch Successful", "Claude Code completed the task.");
+        }
         return;
       }
 
@@ -603,6 +607,29 @@ export const useDispatchManager = create<DispatchManagerState>((set, get) => ({
       outputTail: null,
       promptPreview: "",
       statusText: "",
+      // Clear project-scoped state for safe project switching
+      context: null,
+      lastContext: null,
+      errorDetail: null,
+      showOverlay: false,
+      isStreaming: false,
+      streamSequence: 0,
+      streamOutputLines: [],
+      // Fallback state
+      fallbackPhase: "idle",
+      fallbackPrompt: null,
+      fallbackOutput: null,
+      fallbackError: null,
+      fallbackErrorCode: null,
+      fallbackJobId: null,
+      fallbackStatusText: "",
+      fallbackProvider: null,
+      showFallbackModal: false,
+      isFallbackRunning: false,
+      // Milestone plan state
+      milestonePlanPhase: "idle",
+      milestonePlanContext: null,
+      milestonePlanOutput: null,
     });
   },
 

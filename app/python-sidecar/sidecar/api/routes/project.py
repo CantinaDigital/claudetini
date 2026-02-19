@@ -57,9 +57,14 @@ class RegisterRequest(BaseModel):
 
 
 def _get_project_path(project_id: str) -> Path | None:
-    """Get project path from ID (path string)."""
+    """Get project path from ID (path string).
+
+    Only accepts absolute paths to prevent path traversal attacks.
+    """
     # The project_id is actually the path string
     path = Path(project_id)
+    if not path.is_absolute():
+        return None  # Reject relative paths for defense-in-depth
     if path.exists():
         return path
     # Try to find in registry
