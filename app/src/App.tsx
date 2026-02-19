@@ -5,7 +5,7 @@ import { Dashboard } from "./components/layout/Dashboard";
 import { OverviewTab } from "./components/overview/OverviewTab";
 import { RoadmapTab } from "./components/roadmap/RoadmapTab";
 import { GitTab } from "./components/git/GitTab";
-import { TimelineTab } from "./components/timeline/TimelineTab";
+
 import { GatesTab } from "./components/gates/GatesTab";
 import IntelligenceTab from "./components/intelligence/IntelligenceTab";
 import { ProductMapTab } from "./components/product-map/ProductMapTab";
@@ -38,7 +38,7 @@ import { useProjectManager } from "./managers/projectManager";
 import { useParallelManager } from "./managers/parallelManager";
 import { ParallelExecutionOverlay } from "./components/roadmap/ParallelExecutionOverlay";
 
-const TABS = ["Overview", "Roadmap", "Timeline", "Git", "Intelligence", "Product Map", "Quality Gates", "Logs", "Settings"];
+const TABS = ["Overview", "Roadmap", "Git", "Intelligence", "Product Map", "Quality Gates", "Logs", "Settings"];
 
 /**
  * Global error boundary — prevents any component crash from producing a black screen.
@@ -498,11 +498,11 @@ IMPORTANT: Do NOT make any code changes yet. Instead:
   };
 
   const handleNavigateToSettings = () => {
-    setActiveTab(8);
+    setActiveTab(7);
   };
 
   const handleNavigateToGit = () => {
-    setActiveTab(3);
+    setActiveTab(2);
   };
 
   // Execute dispatch after pre-flight approval
@@ -624,59 +624,50 @@ Only modify the minimum files needed. Run the ${gateName.toLowerCase()} gate aft
         </TabErrorBoundary>
       </div>
       <div className={activeTab === 2 ? 'block' : 'hidden'}>
-        <TabErrorBoundary tabName="Timeline">
-          <TimelineTab
+        <TabErrorBoundary tabName="Git">
+          <GitTab
             projectPath={activeProjectPath}
+            isActive={activeTab === 2}
             onReport={handleViewReport}
             onShowConfirm={showConfirmDialog}
           />
         </TabErrorBoundary>
       </div>
       <div className={activeTab === 3 ? 'block' : 'hidden'}>
-        <TabErrorBoundary tabName="Git">
-          <GitTab
-            projectPath={activeProjectPath}
-            isActive={activeTab === 3}
-            onReport={handleViewReport}
-            onShowConfirm={showConfirmDialog}
-          />
-        </TabErrorBoundary>
-      </div>
-      <div className={activeTab === 4 ? 'block' : 'hidden'}>
         <TabErrorBoundary tabName="Intelligence">
           <IntelligenceTab onFix={handleFix} />
         </TabErrorBoundary>
       </div>
-      <div className={activeTab === 5 ? 'block' : 'hidden'}>
+      <div className={activeTab === 4 ? 'block' : 'hidden'}>
         <TabErrorBoundary tabName="Product Map">
           <ProductMapTab onFix={handleFix} />
         </TabErrorBoundary>
       </div>
-      <div className={activeTab === 6 ? 'block' : 'hidden'}>
+      <div className={activeTab === 5 ? 'block' : 'hidden'}>
         <TabErrorBoundary tabName="Quality Gates">
           <GatesTab
             projectPath={activeProjectPath}
-            isActive={activeTab === 6}
+            isActive={activeTab === 5}
             onFix={handleFix}
             onNavigateToSettings={handleNavigateToSettings}
           />
         </TabErrorBoundary>
       </div>
-      <div className={activeTab === 7 ? 'block' : 'hidden'}>
+      <div className={activeTab === 6 ? 'block' : 'hidden'}>
         <TabErrorBoundary tabName="Logs">
           <LogsTab
             projectPath={activeProjectPath}
-            isActive={activeTab === 7}
+            isActive={activeTab === 6}
             onFix={handleFix}
             onShowConfirm={showConfirmDialog}
           />
         </TabErrorBoundary>
       </div>
-      <div className={activeTab === 8 ? 'block' : 'hidden'}>
+      <div className={activeTab === 7 ? 'block' : 'hidden'}>
         <TabErrorBoundary tabName="Settings">
           <SettingsTab
             projectPath={activeProjectPath}
-            isActive={activeTab === 8}
+            isActive={activeTab === 7}
             backendConnected={backendConnected}
             onShowConfirm={showConfirmDialog}
           />
@@ -811,7 +802,7 @@ Only modify the minimum files needed. Run the ${gateName.toLowerCase()} gate aft
             setShowDispatchSummary(false);
             setDispatchSummary(null);
             useDispatchManager.getState().reset();
-            setActiveTab(3); // Navigate to Git tab
+            setActiveTab(2); // Navigate to Git tab
           }}
           onMarkComplete={() => {
             // Task is already auto-marked as done on dispatch completion
@@ -825,7 +816,7 @@ Only modify the minimum files needed. Run the ${gateName.toLowerCase()} gate aft
             setShowDispatchSummary(false);
             setDispatchSummary(null);
             useDispatchManager.getState().reset();
-            setActiveTab(3); // Navigate to Git tab
+            setActiveTab(2); // Navigate to Git tab
             toast.info("Commit", "Review changes in Git tab and commit when ready");
           }}
           onClose={() => {
