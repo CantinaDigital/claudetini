@@ -353,10 +353,12 @@ export const useDispatchManager = create<DispatchManagerState>((set, get) => ({
           return;
         }
 
+        // Capture context before completeDispatch (same pattern as SSE path)
+        const ctx = get().lastContext;
         completeDispatch();
         // Only show toast for non-roadmap dispatches; App.tsx handles the
         // roadmap toast after toggling the item to avoid duplicates.
-        if (!get().lastContext?.itemRef?.text) {
+        if (!ctx?.itemRef?.text) {
           toast.success("Dispatch Successful", "Claude Code completed the task.");
         }
         return;
@@ -595,6 +597,7 @@ export const useDispatchManager = create<DispatchManagerState>((set, get) => ({
   reset: () => {
     clearTimer();
     closeEventSource();
+    sseJobId = null;
     set({
       phase: "idle",
       isDispatching: false,
@@ -630,6 +633,8 @@ export const useDispatchManager = create<DispatchManagerState>((set, get) => ({
       milestonePlanPhase: "idle",
       milestonePlanContext: null,
       milestonePlanOutput: null,
+      // Queue
+      queue: [],
     });
   },
 

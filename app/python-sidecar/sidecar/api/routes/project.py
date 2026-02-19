@@ -65,6 +65,7 @@ def _get_project_path(project_id: str) -> Path | None:
     path = Path(project_id)
     if not path.is_absolute():
         return None  # Reject relative paths for defense-in-depth
+    path = path.resolve()  # Collapse .. components to prevent traversal
     if path.exists():
         return path
     # Try to find in registry
@@ -250,7 +251,7 @@ def list_projects() -> list[ProjectResponse]:
 @router.post("/register")
 async def register_project(request: RegisterRequest) -> ProjectResponse:
     """Register a new project"""
-    path = Path(request.path)
+    path = Path(request.path).resolve()
 
     if not path.exists():
         raise HTTPException(status_code=400, detail="Path does not exist")

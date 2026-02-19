@@ -69,14 +69,7 @@ function AppRouterInner() {
   const resetDispatch = useDispatchManager((s) => s.reset);
   const [backendReady, setBackendReady] = useState(false);
   const [registering, setRegistering] = useState(false);
-
-  // Redirect to picker if dashboard is reached without a project selected.
-  // Uses useEffect to avoid side effects (localStorage write) during render.
-  useEffect(() => {
-    if (currentScreen === 'dashboard' && !currentProject) {
-      setScreen('picker');
-    }
-  }, [currentScreen, currentProject, setScreen]);
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   // Initialize backend and load projects on mount
   useEffect(() => {
@@ -88,10 +81,20 @@ function AppRouterInner() {
       } catch {
         // Backend not available — show picker anyway with warning banner
         setBackendReady(false);
+      } finally {
+        setHasInitialized(true);
       }
     };
     init();
   }, [loadProjects]);
+
+  // Redirect to picker if dashboard is reached without a project selected.
+  // Skipped until init completes so restoreProject has a chance to populate currentProject.
+  useEffect(() => {
+    if (hasInitialized && currentScreen === 'dashboard' && !currentProject) {
+      setScreen('picker');
+    }
+  }, [hasInitialized, currentScreen, currentProject, setScreen]);
 
   // When a project is opened, go straight to the dashboard (no readiness gate)
   const handleOpenProject = (project: any) => {
