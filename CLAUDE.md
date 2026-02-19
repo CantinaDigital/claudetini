@@ -144,14 +144,21 @@ mypy src/
 <!-- claudetini:managed -->
 ## Current Status
 - Active branch: main
-- Last updated: 2026-02-16
+- Last updated: 2026-02-19
 
 ## What's In Progress
-- Milestone 13: Project Intelligence Tab (0/23 items)
+- Roadmap audit complete — false completions corrected, 14 items pruned
 
 ## What's Next
-- Remaining items in Milestones 5-12
+- M10: Sidecar auto-start (10.4) and Python bundling (10.5) — blocks shipping
+- M6: Switch Project (6.5) and screen persistence (6.6)
+- M7: Project dropdown in dashboard (7.1, 7.2)
+- M5: Fix bootstrap error recovery (5.5)
+- M12: Polish dispatch success/failure UX (12.9)
+- M11: Replace 163 inline styles (11.3), full-width layouts (11.4, 11.5)
+- M8: Auto-discovery presentation (8.4), dedup (8.5)
+- M10: Auto-update (10.6), release workflow (10.7)
 
 ## Progress
-- Overall: 77/113 items (68%)
+- Overall: 97/112 items (87%) — corrected from falsely reported 88%
 <!-- /claudetini:managed -->

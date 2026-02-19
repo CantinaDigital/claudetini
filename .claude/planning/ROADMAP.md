@@ -56,40 +56,30 @@
 
 ## Milestone 5: Bootstrap UI
 - [x] **5.1** Create `BootstrapProgressView.tsx` component
-- [ ] **5.2** Show checklist of items being created
-- [x] **5.3** Real-time status updates (pending, running, complete, failed)
-- [x] **5.4** Display Claude's output in expandable sections
-- [ ] **5.5** Add "Pause" and "Cancel" controls
-- [x] **5.6** Show estimated cost before starting
-- [x] **5.7** On completion, show summary and "Continue to Dashboard" CTA
-- [x] **5.8** Handle errors with "Retry" or "Skip" options
+- [x] **5.2** Real-time status updates via SSE (pending, running, complete, failed)
+- [x] **5.3** Show estimated cost before starting (tokens, USD, steps)
+- [x] **5.4** "Continue to Dashboard" CTA button on completion
+- [ ] **5.5** Fix error recovery — "Try Again" currently routes to unimplemented screen; add working retry and render bootstrap result summary on completion
 
-## Milestone 6: App State Machine
-- [x] **6.1** Define `AppScreen` enum: picker | scorecard | bootstrap | dashboard
-- [ ] **6.2** Create `AppStateManager` with screen transitions
-- [x] **6.3** Add route guard: picker → scorecard (always runs on new project)
-- [x] **6.4** Add route guard: scorecard → bootstrap (if user clicks bootstrap)
-- [x] **6.5** Add route guard: scorecard → dashboard (if skip or score >= 70)
-- [x] **6.6** Add "Switch Project" action from dashboard header
-- [x] **6.7** Persist last screen state for session resume
-- [ ] **6.8** Add breadcrumb navigation for orientation
+## Milestone 6: App Navigation
+- [x] **6.1** Define `AppScreen` type: picker | scorecard | bootstrap | dashboard
+- [x] **6.2** Scorecard accessed on-demand from dashboard (not a mandatory gate)
+- [x] **6.3** Route guard: scorecard → bootstrap (if user clicks bootstrap)
+- [x] **6.4** Route guard: scorecard → dashboard (if skip or score >= 70)
+- [ ] **6.5** Add "Switch Project" action from dashboard header — no way to return to picker without reloading
+- [ ] **6.6** Persist last screen state for session resume — `currentScreen` resets to `"picker"` every launch
 
 ## Milestone 7: Multi-Project Management
-- [x] **7.1** Add project dropdown in dashboard header
-- [x] **7.2** Show mini-health badge per project in dropdown
-- [ ] **7.3** "Open in New Window" action (Tauri multi-window)
-- [x] **7.4** Project search/filter in picker
-- [x] **7.5** Sort options: name, last opened, health score, recent activity
-- [x] **7.6** Bulk actions: remove multiple, re-scan all
+- [ ] **7.1** Add project dropdown/switcher in dashboard header — currently no project selector once on dashboard
+- [ ] **7.2** Show mini-health badge per project in dropdown (depends on 7.1)
+- [x] **7.3** Project search/filter in picker (searches name, path, branch, session, summary)
 
 ## Milestone 8: Project Auto-Discovery
-- [x] **8.1** Scan `~/.claude/projects/` for project hashes
-- [x] **8.2** Reverse-lookup project paths from session JSONL files
-- [ ] **8.3** Scan common locations (~/Documents, ~/Projects, ~/Code, ~/dev)
-- [x] **8.4** Detect Git repos with `.claude/` or `CLAUDE.md`
-- [x] **8.5** Present discovered projects with "Add to Claudetini" action
-- [ ] **8.6** Exclude already-registered projects from discovery results
-- [ ] **8.7** Background scanning with progress indicator
+- [x] **8.1** Compute project hash from path and match against `~/.claude/projects/` directories
+- [x] **8.2** Extract project paths from session JSONL `cwd`/`workingDirectory` fields and `settings.local.json`
+- [x] **8.3** Detect `.claude/` or `CLAUDE.md` markers on known project paths
+- [ ] **8.4** Manual "Add Path" form in picker — exists, but no autonomous scanning/presentation of undiscovered projects
+- [ ] **8.5** Exclude already-registered projects from discovery results
 
 ## Milestone 9: Wizard Polish
 - [x] **9.1** Add animations/transitions between wizard steps
@@ -104,24 +94,20 @@
 - [x] **10.1** Configure Tauri for macOS .dmg / .app bundle
 - [x] **10.2** Configure Tauri for Windows .exe / .msi installer
 - [x] **10.3** Configure Tauri for Linux .AppImage / .deb
-- [x] **10.4** Auto-start Python sidecar on app launch
-- [x] **10.5** Bundle Python runtime or use pyinstaller for sidecar
-- [ ] **10.6** Code signing for macOS (notarization)
-- [ ] **10.7** Code signing for Windows (Authenticode)
-- [ ] **10.8** Auto-update mechanism (Tauri updater)
-- [ ] **10.9** First public release workflow (GitHub Releases)
+- [ ] **10.4** Auto-start Python sidecar on app launch — currently a stub returning error; dev uses `concurrently`
+- [ ] **10.5** Bundle Python runtime or use pyinstaller for sidecar — no bundling tool configured
+- [ ] **10.6** Auto-update mechanism (Tauri updater)
+- [ ] **10.7** First public release workflow (GitHub Releases) — no `.github/workflows/` directory exists
 
 ## Milestone 11: Design System Consolidation
-- [x] **11.1** Audit all components for inline `style={{}}` usage
-- [ ] **11.2** Extend `tokens.ts` with spacing, radii, and shadow tokens
-- [x] **11.3** Add CSS custom properties in `global.css` from token values
-- [x] **11.4** Add reusable utility classes in `@layer components`
-- [x] **11.5** Replace inline styles with Tailwind classes across all components
-- [ ] **11.6** Ensure single-column tabs have sections at 100% container width
-- [ ] **11.7** Remove max-width constraints preventing full-width layouts
-- [x] **11.8** Use consistent container/section patterns across all tabs
+- [x] **11.1** Audit components for inline `style={{}}` usage — 163 instances identified across 24 files (91 in IntelligenceTab alone)
+- [x] **11.2** Base utility classes in `@layer components` — 3 classes: `.mc-label`, `.mc-tag`, `.mc-severity-tag`
+- [ ] **11.3** Replace inline styles with Tailwind classes across all components — 163 inline `style={{}}` remain in 24 files
+- [ ] **11.4** Ensure single-column tabs have sections at 100% container width
+- [ ] **11.5** Remove max-width constraints preventing full-width layouts — tabs capped at 1120px
+- [x] **11.6** Use consistent container/section patterns across all tabs
 
-## Milestone 12: Task Dispatch UX Overhaul (CRITICAL)
+## Milestone 12: Task Dispatch UX Overhaul
 - [x] **12.1** Create `PromptEnricher` to build context-aware prompts with file hints, patterns, acceptance criteria
 - [x] **12.2** Add codebase context injection: relevant files, component structure, design patterns from CLAUDE.md
 - [x] **12.3** Stream real Claude Code CLI output to UI (tail the output file created by dispatcher.py)
@@ -130,11 +116,11 @@
 - [x] **12.6** Add post-dispatch summary: files changed, lines added/removed, git diff preview
 - [x] **12.7** Implement auto-reconciliation: analyze git changes and offer to mark task complete
 - [x] **12.8** Add "What was accomplished?" summary generation using Claude Code analysis
-- [ ] **12.9** Show success/failure state clearly with next actions (commit, review, iterate)
+- [ ] **12.9** Show success/failure state clearly with next actions (commit, review, iterate) — ~80% done, needs UX polish
 - [x] **12.10** Add "Review Changes" button that opens git diff view
 - [x] **12.11** Add "Mark Task Complete" action when reconciliation confirms success
 - [x] **12.12** Fix progress indicators to reflect real Claude Code state, not elapsed time
-- [x] **12.13** Add test coverage for prompt enrichment and output parsing
+- [x] **12.13** Test coverage for dispatch streaming and output parsing (test_dispatcher, test_dispatch_stream, test_dispatch_intents, test_agent_parser)
 
 ## Milestone 13: Project Intelligence Tab
 - [x] **13.1** Create `hardcoded_scanner.py` — Detect hardcoded URLs, IPs, TODO/FIXME markers, placeholder data (lorem ipsum, test@example.com, foo/bar/baz, nil UUIDs), magic numbers, and absolute file paths in source code. Follow `secrets_scanner.py` pattern: `HardcodedScanner(project_path)` class with `scan() -> HardcodedScanResult`. Include `HardcodedFinding` dataclass with `file_path`, `line_number`, `category`, `severity`, `matched_text`, `suggestion`. Categories: `url`, `ip_address`, `port`, `todo_marker`, `placeholder`, `absolute_path`, `magic_number`. Severity logic: placeholder in production path (src/, lib/, app/) = critical; in test path = info; TODOs = warning. Reuse `SCANNABLE_EXTENSIONS` and `SKIP_DIRECTORIES` sets (duplicate from secrets_scanner, don't import).
@@ -150,16 +136,16 @@
 - [x] **13.11** Create `app/python-sidecar/sidecar/api/routes/intelligence.py` — FastAPI router with prefix `/intelligence`. Pydantic response models for each scanner section + combined `IntelligenceReportResponse` with `CategoryScore` summaries. Endpoints: `POST /api/intelligence/scan` (full scan, body: `{project_path}`, timeout 120s), `GET /api/intelligence/{project_path:path}` (cached report), `GET /api/intelligence/summary/{project_path:path}` (lightweight: score + categories + staleness flag), `POST /api/intelligence/scan/{scanner_name}` (individual scanner). Follow `readiness.py` pattern for structure. Register in `server.py` with `app.include_router(intelligence.router, prefix="/api", tags=["intelligence"])`.
 - [x] **13.12** Add TypeScript types to `app/src/types/index.ts` — Add interfaces: `HardcodedFinding`, `HardcodedScanResult`, `DependencyPackage`, `DependencyReport`, `IntegrationPoint`, `IntegrationMap`, `FileFreshness`, `FreshnessReport`, `FeatureEntry`, `FeatureInventory`, `CategoryScore`, `IntelligenceReport`, `IntelligenceSummary`. All fields match the Pydantic response models from 13.11.
 - [x] **13.13** Add API client functions to `app/src/api/backend.ts` — Add to the `api` object: `scanIntelligence(projectPath)` (POST, 120s timeout), `getIntelligence(projectPath)` (GET), `getIntelligenceSummary(projectPath)` (GET, 5s timeout), `scanIntelligenceSingle(projectPath, scannerName)` (POST, 60s timeout). Import new types from types/index.ts.
-- [x] **13.14** Create `app/src/components/intelligence/CollapsibleSection.tsx` — Reusable collapsible wrapper with title, icon, subtitle, optional badge ReactNode, defaultOpen prop, chevron toggle animation. Uses `bg-mc-surface-1`, `border-mc-border-0`, `rounded-xl`. Clicking header toggles content visibility.
-- [x] **13.15** Create `app/src/components/intelligence/SummaryBar.tsx` — Score ring (reuse `ReadinessRing` with new optional `label` prop), category severity pills showing scanner name + status + finding count, scan timestamp with relative time, "Scan Now" button with loading state. Modify `ReadinessRing.tsx` to accept optional `label?: string` prop (default "Readiness Score").
-- [x] **13.16** Create `app/src/components/intelligence/TechDebtHeatmap.tsx` — Combine hardcoded findings + freshness data per-file into a heat score. Formula: issues(60%) + staleness(40%). Show files as rows sorted by heat score descending (top 50). Color bars: red (>=70), amber (>=40), green (<40). Click to expand showing specific findings per file with line numbers, categories, and matched text.
-- [x] **13.17** Create `app/src/components/intelligence/HardcodedFindings.tsx` — Findings grouped by severity (critical, warning, info). Filter pills (all/critical/warning/info) with counts. Search input filtering by file path, matched text, or category. Each finding shows file:line, matched text (truncated), category tag. Uses `SeverityTag` component.
-- [x] **13.18** Create `app/src/components/intelligence/DependencyHealth.tsx` — Package cards in 2-column grid. Filter: all/outdated/vulnerable with counts. Each card shows package name, current -> latest version, severity badge, package manager label. Vulnerable packages highlighted with red border/background. Vulnerability detail shown when present.
-- [x] **13.19** Create `app/src/components/intelligence/IntegrationsMap.tsx` — Service cards in 3-column grid with type icons. Click to expand showing file references with line numbers and endpoint URLs. Uses `Tag` component for integration type labels.
-- [x] **13.20** Create `app/src/components/intelligence/CodeFreshness.tsx` — Stats row (total files, stale count, abandoned count, median age). Horizontal bar chart for age distribution buckets. Stale files list sorted by age (descending) with last author and days-old count. Abandoned files highlighted in red, stale in amber.
-- [x] **13.21** Create `app/src/components/intelligence/FeatureMap.tsx` — Category filter pills (all, component, route, hook, model, etc.) with counts. Tracked/untracked stats display. Feature list with green dot (tracked) or amber dot (untracked), name, category tag, file path, and roadmap item link if tracked. Sort: untracked first, then alphabetical.
-- [x] **13.22** Create `app/src/components/intelligence/IntelligenceTab.tsx` — Main tab orchestrator. On mount: check frontend cache, then backend cache (parallel `getIntelligenceSummary` + `getIntelligence`). Show skeleton loaders while loading. If no data, show "Run a scan" prompt. "Scan Now" triggers `scanIntelligence()`. Renders SummaryBar + 6 CollapsibleSections (Tech Debt Heatmap, Hardcoded Values, Dependency Health, Integrations & APIs, Code Freshness, Feature Map). Max width 900px. Error display for failed scans.
-- [x] **13.23** Register Intelligence tab in `app/src/App.tsx` — Add "Intelligence" to TABS array at index 4 (between Quality Gates and Logs). Import `IntelligenceTab`. Add render block with `TabErrorBoundary`. Renumber Logs to index 5 and Settings to index 6. Update `handleNavigateToSettings` to use `setActiveTab(6)`. Verify all `setActiveTab` calls reference correct indexes.
+- [x] **13.14** Create `app/src/components/intelligence/CollapsibleSection.tsx` — Reusable collapsible wrapper (built but not currently used by IntelligenceTab)
+- [x] **13.15** Intelligence UI: Score ring, dimension cards, scan button (inlined in IntelligenceTab Tier 1)
+- [x] **13.16** Intelligence UI: Tech debt heatmap with treemap blocks and heat-scored file list (inlined in IntelligenceTab Tier 2)
+- [x] **13.17** Intelligence UI: Hardcoded findings grouped by type with severity tags (inlined in IntelligenceTab Tier 3)
+- [x] **13.18** Intelligence UI: Dependency health with outdated/vulnerable counts (inlined in IntelligenceTab Tier 3)
+- [x] **13.19** Intelligence UI: Service integration cards in 3-column grid with type icons (inlined in IntelligenceTab Tier 3)
+- [x] **13.20** Intelligence UI: Code freshness stats, age distribution bar chart, legend (inlined in IntelligenceTab Tier 3)
+- [x] **13.21** Intelligence UI: Feature category chart, untracked/coupled insights (inlined in IntelligenceTab Tier 3)
+- [x] **13.22** Create `app/src/components/intelligence/IntelligenceTab.tsx` — 918-line orchestrator with 3-tier layout (Executive Summary, Story, Deep Dives). Caching, skeleton loaders, scan triggers, error display. All scanner visualizations consolidated here instead of separate component files.
+- [x] **13.23** Register Intelligence tab in `app/src/App.tsx` — "Intelligence" at TABS index 3 (between Git and Product Map). Import, TabErrorBoundary wrapper, onFix and onNavigateToProductMap props.
 
 ## Success Criteria
 - [x] User can install Claudetini to Applications folder
@@ -169,11 +155,11 @@
 - [x] User can reach dashboard with 100% readiness score
 - [x] Multiple projects can be managed from one app instance
 - [x] App auto-discovers existing Claude Code projects
-- [ ] Intelligence tab scans and reports hardcoded values, dependency health, integrations, code freshness, and feature coverage
-- [ ] Each scanner produces actionable findings with severity levels and suggested fixes
-- [ ] Overall intelligence score accurately reflects project health across all 5 dimensions
-- [ ] Cached results load instantly; stale indicator shows when data is outdated
-- [ ] Environment config audit catches undocumented env vars
-- [ ] Documentation drift detection catches dead references in README/CLAUDE.md
-- [ ] Migration tracker identifies partial codebase migrations
-- [ ] Coupling analysis ranks modules by import dependents
+- [x] Intelligence tab scans and reports hardcoded values, dependency health, integrations, code freshness, and feature coverage
+- [x] Each scanner produces actionable findings with severity levels and suggested fixes
+- [x] Overall intelligence score accurately reflects project health across all 5 dimensions
+- [x] Cached results load instantly; stale indicator shows when data is outdated
+- [x] Environment config audit catches undocumented env vars
+- [x] Documentation drift detection catches dead references in README/CLAUDE.md
+- [x] Migration tracker identifies partial codebase migrations
+- [x] Coupling analysis ranks modules by import dependents
