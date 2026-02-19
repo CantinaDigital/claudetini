@@ -20,6 +20,8 @@ except ImportError as e:
     logger.warning(f"Core modules not available: {e}")
     CORE_AVAILABLE = False
 
+from ..ttl_cache import get as cache_get, put as cache_put
+
 
 class MilestoneItemResponse(BaseModel):
     text: str
@@ -100,6 +102,11 @@ def get_roadmap(project_id: str) -> RoadmapResponse:
     if not project_path:
         raise HTTPException(status_code=404, detail="Project not found")
 
+    cache_key = f"roadmap:{project_path}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     roadmap = RoadmapParser.parse(project_path)
 
     if not roadmap:
@@ -127,13 +134,15 @@ def get_roadmap(project_id: str) -> RoadmapResponse:
             )
         )
 
-    return RoadmapResponse(
+    result = RoadmapResponse(
         milestones=milestones,
         totalItems=roadmap.total_items,
         completedItems=roadmap.completed_items,
         progress=int(roadmap.progress_percent),
         title=roadmap.title,
     )
+    cache_put(cache_key, result, ttl=5)
+    return result
 
 
 @router.post("/{project_id:path}/toggle-item")

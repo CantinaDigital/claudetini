@@ -2,6 +2,7 @@
 Git API routes
 """
 
+from concurrent.futures import ThreadPoolExecutor
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
@@ -11,6 +12,9 @@ import logging
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+# Shared thread pool for parallelizing git subprocess calls
+_git_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="git")
 
 # Maximum characters of git diff to send to the AI commit message generator.
 _MAX_DIFF_CHARS = 24000
@@ -43,6 +47,8 @@ try:
 except ImportError as e:
     logger.warning(f"Core modules not available: {e}")
     CORE_AVAILABLE = False
+
+from ..ttl_cache import get as cache_get, put as cache_put
 
 
 class UnpushedCommitResponse(BaseModel):
@@ -203,7 +209,6 @@ def _get_project_path(project_id: str) -> Path | None:
 def get_git_status(project_id: str) -> GitStatusResponse:
     """Get git status (unpushed, staged, uncommitted, stashes)"""
     if not CORE_AVAILABLE:
-        # Core modules not available - return empty data
         return GitStatusResponse(
             branch="unknown",
             unpushed=[],
@@ -218,17 +223,28 @@ def get_git_status(project_id: str) -> GitStatusResponse:
     if not project_path:
         raise HTTPException(status_code=404, detail="Project not found")
 
+    cache_key = f"git:status:{project_path}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     try:
         git = GitUtils(project_path)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Not a git repository: {e}")
 
-    branch = git.current_branch()
-    status_data = git.get_status_detailed()
-    unpushed_commits = git.unpushed_commits()
-    stashes = git.list_stashes()
+    # Run independent git operations in parallel instead of sequentially
+    branch_future = _git_pool.submit(git.current_branch)
+    status_future = _git_pool.submit(git.get_status_detailed)
+    unpushed_future = _git_pool.submit(git.unpushed_commits)
+    stash_future = _git_pool.submit(git.list_stashes)
 
-    return GitStatusResponse(
+    branch = branch_future.result(timeout=15)
+    status_data = status_future.result(timeout=15)
+    unpushed_commits = unpushed_future.result(timeout=15)
+    stashes = stash_future.result(timeout=15)
+
+    result = GitStatusResponse(
         branch=branch,
         unpushed=[
             UnpushedCommitResponse(
@@ -271,18 +287,24 @@ def get_git_status(project_id: str) -> GitStatusResponse:
             for f in status_data.get("submodule_issues", [])
         ],
     )
+    cache_put(cache_key, result, ttl=3)
+    return result
 
 
 @router.get("/{project_id:path}/commits")
 def get_commits(project_id: str, limit: int = Query(30, ge=1, le=500)) -> list[CommitResponse]:
     """Get recent commits"""
     if not CORE_AVAILABLE:
-        # Core modules not available - return empty data
         return []
 
     project_path = _get_project_path(project_id)
     if not project_path:
         raise HTTPException(status_code=404, detail="Project not found")
+
+    cache_key = f"git:commits:{project_path}:{limit}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
 
     try:
         git = GitUtils(project_path)
@@ -291,7 +313,7 @@ def get_commits(project_id: str, limit: int = Query(30, ge=1, le=500)) -> list[C
 
     commits = git.recent_commits(limit=limit)
 
-    return [
+    result = [
         CommitResponse(
             hash=c.get("hash", "")[:7],
             msg=c.get("message", ""),
@@ -302,6 +324,8 @@ def get_commits(project_id: str, limit: int = Query(30, ge=1, le=500)) -> list[C
         )
         for c in commits
     ]
+    cache_put(cache_key, result, ttl=5)
+    return result
 
 
 @router.get("/{project_id:path}/stashes")

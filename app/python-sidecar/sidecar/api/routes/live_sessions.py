@@ -20,6 +20,8 @@ from pydantic import BaseModel
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+from ..ttl_cache import get as cache_get, put as cache_put
+
 # Claude Code data directory
 CLAUDE_HOME = Path.home() / ".claude"
 PROJECTS_DIR = CLAUDE_HOME / "projects"
@@ -300,7 +302,7 @@ def _extract_exchanges(session_file: Path, max_turns: int = 10) -> list[Exchange
     of showing every individual tool call. Returns at most max_turns * 2 exchanges
     (one user + one assistant per turn).
     """
-    lines = _read_tail_lines(session_file, max_lines=500, max_bytes=1_000_000)
+    lines = _read_tail_lines(session_file, max_lines=200, max_bytes=256_000)
     if not lines:
         return []
 
@@ -374,7 +376,7 @@ def _extract_session_stats(session_file: Path) -> dict:
         "estimated_cost": None,
     }
 
-    lines = _read_tail_lines(session_file, max_lines=4000, max_bytes=2_000_000)
+    lines = _read_tail_lines(session_file, max_lines=1000, max_bytes=500_000)
     for line in lines:
         entry = _parse_jsonl_entry(line)
         if not entry:
@@ -465,16 +467,26 @@ def get_live_sessions(project_id: str) -> LiveSessionResponse:
     The `session` field contains the most recent active session (backward compat).
     The `sessions` field contains all active sessions.
     """
+    # Short TTL cache — live-sessions is polled frequently and the underlying
+    # file I/O is expensive (stat + tail-read of large JSONL files).
+    cache_key = f"live-sessions:{project_id}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     try:
         # Find project directory
         project_dir = _find_project_dir(project_id)
         if not project_dir:
-            return LiveSessionResponse(active=False)
+            result = LiveSessionResponse(active=False)
+            cache_put(cache_key, result, ttl=3)
+            return result
 
         # Detect running Claude processes for PID info
         claude_pids = _detect_claude_pids()
 
-        # Find ALL active session files (not just the first one)
+        # Check only the 10 most recent session files (was 30).
+        # Active sessions always have fresh mtimes so they'll be in the top 10.
         def _mtime(path: Path) -> float:
             try:
                 return path.stat().st_mtime
@@ -483,12 +495,14 @@ def get_live_sessions(project_id: str) -> LiveSessionResponse:
 
         jsonl_files = sorted(project_dir.glob("*.jsonl"), key=_mtime, reverse=True)
         active_files: list[Path] = []
-        for jsonl_file in jsonl_files[:30]:
+        for jsonl_file in jsonl_files[:10]:
             if _is_session_active(jsonl_file):
                 active_files.append(jsonl_file)
 
         if not active_files:
-            return LiveSessionResponse(active=False)
+            result = LiveSessionResponse(active=False)
+            cache_put(cache_key, result, ttl=3)
+            return result
 
         # Build session objects for each active file
         all_sessions: list[LiveSession] = []
@@ -508,14 +522,18 @@ def get_live_sessions(project_id: str) -> LiveSessionResponse:
                 continue
 
         if not all_sessions:
-            return LiveSessionResponse(active=False)
+            result = LiveSessionResponse(active=False)
+            cache_put(cache_key, result, ttl=3)
+            return result
 
-        return LiveSessionResponse(
+        result = LiveSessionResponse(
             active=True,
             session=all_sessions[0],  # backward compat
             sessions=all_sessions,
             exchanges=primary_exchanges,
         )
+        cache_put(cache_key, result, ttl=3)
+        return result
     except Exception as exc:
         logger.warning("Live session lookup failed for %s: %s", project_id, exc)
         return LiveSessionResponse(active=False)

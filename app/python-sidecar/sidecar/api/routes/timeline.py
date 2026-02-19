@@ -21,6 +21,8 @@ except ImportError as e:
     logger.warning(f"Core modules not available: {e}")
     CORE_AVAILABLE = False
 
+from ..ttl_cache import get as cache_get, put as cache_put
+
 
 class CommitInfoResponse(BaseModel):
     """Git commit metadata for timeline entries."""
@@ -102,6 +104,11 @@ def get_timeline(project_id: str, limit: int = Query(50, ge=1, le=500)) -> Timel
     if not project_path:
         raise HTTPException(status_code=404, detail="Project not found")
 
+    cache_key = f"timeline:{project_path}:{limit}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     try:
         project = Project.from_path(project_path)
         builder = TimelineBuilder(project)
@@ -161,7 +168,9 @@ def get_timeline(project_id: str, limit: int = Query(50, ge=1, le=500)) -> Timel
             )
         )
 
-    return TimelineResponse(
+    result = TimelineResponse(
         entries=response_entries,
         total=len(response_entries),
     )
+    cache_put(cache_key, result, ttl=10)
+    return result
