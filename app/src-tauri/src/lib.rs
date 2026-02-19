@@ -2,12 +2,14 @@ use std::net::TcpListener;
 use std::sync::Mutex;
 
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter, Manager, RunEvent};
 use tauri_plugin_shell::ShellExt;
+use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 
-/// Holds the sidecar port (and child PID for manual kill if needed).
+/// Holds the sidecar port and child handle for lifecycle management.
 struct SidecarState {
     port: u16,
+    child: Option<CommandChild>,
 }
 
 /// Payload emitted to the frontend when the sidecar is healthy.
@@ -102,13 +104,22 @@ fn spawn_sidecar(app_handle: &AppHandle) {
     };
 
     match sidecar_command.spawn() {
-        Ok((_rx, _child)) => {
+        Ok((rx, child)) => {
             println!("Sidecar process spawned, polling health...");
 
+            // Store the child handle in managed state so it lives for the
+            // app's lifetime and can be killed on shutdown.
             let state = app_handle.state::<Mutex<SidecarState>>();
             if let Ok(mut s) = state.lock() {
                 s.port = port;
+                s.child = Some(child);
             }
+
+            // Consume the event receiver in a background task to keep the
+            // channel alive and log sidecar output.
+            tauri::async_runtime::spawn(async move {
+                drain_sidecar_events(rx).await;
+            });
 
             // Poll health in the background, then emit event.
             let handle = app_handle.clone();
@@ -129,6 +140,25 @@ fn spawn_sidecar(app_handle: &AppHandle) {
     }
 }
 
+/// Read sidecar stdout/stderr and log it. Runs until the process terminates.
+async fn drain_sidecar_events(mut rx: tokio::sync::mpsc::Receiver<CommandEvent>) {
+    while let Some(event) = rx.recv().await {
+        match event {
+            CommandEvent::Stdout(line) => {
+                println!("[sidecar] {}", String::from_utf8_lossy(&line));
+            }
+            CommandEvent::Stderr(line) => {
+                eprintln!("[sidecar] {}", String::from_utf8_lossy(&line));
+            }
+            CommandEvent::Terminated(payload) => {
+                eprintln!("Sidecar terminated: code={:?} signal={:?}", payload.code, payload.signal);
+                break;
+            }
+            _ => {}
+        }
+    }
+}
+
 /// Tauri command: return the current sidecar port (0 if not yet assigned).
 #[tauri::command]
 fn get_sidecar_port(state: tauri::State<'_, Mutex<SidecarState>>) -> Option<u16> {
@@ -137,18 +167,36 @@ fn get_sidecar_port(state: tauri::State<'_, Mutex<SidecarState>>) -> Option<u16>
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_updater::init())
         .manage(Mutex::new(SidecarState {
             port: 0,
+            child: None,
         }))
         .invoke_handler(tauri::generate_handler![get_sidecar_port])
         .setup(|app| {
+            // Initialize updater plugin (desktop only).
+            #[cfg(desktop)]
+            app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
+
             spawn_sidecar(app.handle());
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    // Kill the sidecar gracefully when the app exits.
+    app.run(|app_handle, event| {
+        if let RunEvent::Exit = event {
+            let child = {
+                let state = app_handle.state::<Mutex<SidecarState>>();
+                state.lock().ok().and_then(|mut s| s.child.take())
+            };
+            if let Some(child) = child {
+                println!("Killing sidecar on app exit");
+                let _ = child.kill();
+            }
+        }
+    });
 }

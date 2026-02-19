@@ -103,8 +103,12 @@ export function ProjectPickerView({
       return;
     }
     setPathError(null);
-    await onRegisterProject(nextPath);
-    setProjectPathInput("");
+    try {
+      await onRegisterProject(nextPath);
+      setProjectPathInput("");
+    } catch {
+      // Error already set in store by AppRouter.handleRegisterProject
+    }
   };
 
   const handleOpenSelected = () => {

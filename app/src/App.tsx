@@ -331,7 +331,7 @@ export default function App() {
 
   const handleRoadmapStartSession = (item: MilestoneItem) => {
     const prompt = item.prompt || `Complete the following task: ${item.text}`;
-    void handleShowPreFlight(prompt, "standard", "roadmap");
+    void handleShowPreFlight(prompt, "standard", "roadmap", { text: item.text, prompt: item.prompt });
   };
 
   const handleRoadmapToggleDone = (item: MilestoneItem) => {
