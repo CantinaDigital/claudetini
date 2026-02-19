@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { TabBar } from "./TabBar";
 import { Icons } from "../ui/Icons";
 import { useProjectManager } from "../../managers/projectManager";
+import { useDispatchManager } from "../../managers/dispatchManager";
 import type { HealthReport } from "../../types";
 
 interface DashboardHeaderProps {
@@ -37,6 +38,7 @@ export function DashboardHeader({ tabs, activeTab, onTabChange }: DashboardHeade
   const projects = useProjectManager((s) => s.projects);
   const switchProject = useProjectManager((s) => s.switchProject);
   const setScreen = useProjectManager((s) => s.setScreen);
+  const resetDispatch = useDispatchManager((s) => s.reset);
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [healthCache, setHealthCache] = useState<Record<string, HealthReport>>(loadHealthCache);
@@ -85,9 +87,10 @@ export function DashboardHeader({ tabs, activeTab, onTabChange }: DashboardHeade
         bootstrapInProgress: false,
         error: null,
       });
+      resetDispatch();
       setScreen("dashboard");
     },
-    [currentProject?.id, setScreen],
+    [currentProject?.id, setScreen, resetDispatch],
   );
 
   const handleSwitchToPickerView = useCallback(() => {

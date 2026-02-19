@@ -85,7 +85,14 @@ function AppRouterInner() {
 
   // When a project is opened, go straight to the dashboard (no readiness gate)
   const handleOpenProject = (project: any) => {
-    useProjectManager.setState({ currentProject: project });
+    useProjectManager.setState({
+      currentProject: project,
+      readinessScore: null,
+      readinessReport: null,
+      bootstrapSessionId: null,
+      bootstrapInProgress: false,
+      error: null,
+    });
     setScreen('dashboard');
   };
 
@@ -165,6 +172,10 @@ function AppRouterInner() {
 
   // Dashboard Screen (existing app)
   if (currentScreen === 'dashboard') {
+    if (!currentProject) {
+      setScreen('picker');
+      return null;
+    }
     return <App />;
   }
 

@@ -14,7 +14,6 @@
           "sidecar": true
         }
       ]
-    },
-    "updater:default"
+    }
   ]
 }

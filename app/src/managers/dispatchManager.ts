@@ -973,17 +973,13 @@ async function handleStreamCompletion(
         return;
       }
 
-      const dispatchContext = state.lastContext;
       completeDispatch();
 
       // Do NOT toggle roadmap items here — the App.tsx useEffect handles
       // auto-marking exclusively to avoid double-toggle (SSE + App.tsx both firing).
-      if (dispatchContext?.itemRef?.text) {
-        toast.success(
-          "Task Completed",
-          `"${dispatchContext.itemRef.text}" dispatch finished`
-        );
-      } else {
+      // Also skip the toast for itemRef dispatches: App.tsx shows its own toast
+      // after toggling the roadmap item, so firing one here would be a duplicate.
+      if (!state.lastContext?.itemRef?.text) {
         toast.success(
           "Dispatch Successful",
           "Claude Code completed the task."

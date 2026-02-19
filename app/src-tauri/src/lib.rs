@@ -80,64 +80,73 @@ fn spawn_sidecar(app_handle: &AppHandle) {
     }
 
     // Release mode: find a free port, spawn the bundled binary via Tauri shell plugin.
-    let port = match find_free_port() {
-        Ok(p) => p,
-        Err(e) => {
-            eprintln!("Could not find free port: {e}");
-            return;
-        }
-    };
-
-    println!("Spawning sidecar on port {port}");
-
-    // Use the Tauri shell plugin's sidecar API, which handles path resolution
-    // and target-triple binary naming automatically.
-    let sidecar_command = match app_handle
-        .shell()
-        .sidecar("claudetini-sidecar")
-    {
-        Ok(cmd) => cmd.args(["--port", &port.to_string()]),
-        Err(e) => {
-            eprintln!("Failed to create sidecar command: {e}");
-            return;
-        }
-    };
-
-    match sidecar_command.spawn() {
-        Ok((rx, child)) => {
-            println!("Sidecar process spawned, polling health...");
-
-            // Store the child handle in managed state so it lives for the
-            // app's lifetime and can be killed on shutdown.
-            let state = app_handle.state::<Mutex<SidecarState>>();
-            if let Ok(mut s) = state.lock() {
-                s.port = port;
-                s.child = Some(child);
+    // Retry up to 3 times to handle TOCTOU races where the port gets claimed
+    // between find_free_port() and the sidecar binding to it.
+    for attempt in 1..=3u32 {
+        let port = match find_free_port() {
+            Ok(p) => p,
+            Err(e) => {
+                eprintln!("Could not find free port (attempt {attempt}): {e}");
+                continue;
             }
+        };
 
-            // Consume the event receiver in a background task to keep the
-            // channel alive and log sidecar output.
-            tauri::async_runtime::spawn(async move {
-                drain_sidecar_events(rx).await;
-            });
+        println!("Spawning sidecar on port {port} (attempt {attempt})");
 
-            // Poll health in the background, then emit event.
-            let handle = app_handle.clone();
-            tauri::async_runtime::spawn(async move {
-                match poll_health(port, 30).await {
-                    Ok(()) => {
-                        let _ = handle.emit("sidecar-ready", SidecarReadyPayload { port });
-                    }
-                    Err(e) => {
-                        eprintln!("Sidecar health poll failed: {e}");
-                    }
+        // Use the Tauri shell plugin's sidecar API, which handles path resolution
+        // and target-triple binary naming automatically.
+        let sidecar_command = match app_handle
+            .shell()
+            .sidecar("claudetini-sidecar")
+        {
+            Ok(cmd) => cmd.args(["--port", &port.to_string()]),
+            Err(e) => {
+                eprintln!("Failed to create sidecar command: {e}");
+                return;
+            }
+        };
+
+        match sidecar_command.spawn() {
+            Ok((rx, child)) => {
+                println!("Sidecar process spawned, polling health...");
+
+                // Store the child handle in managed state so it lives for the
+                // app's lifetime and can be killed on shutdown.
+                let state = app_handle.state::<Mutex<SidecarState>>();
+                if let Ok(mut s) = state.lock() {
+                    s.port = port;
+                    s.child = Some(child);
                 }
-            });
-        }
-        Err(e) => {
-            eprintln!("Failed to spawn sidecar: {e}");
+
+                // Consume the event receiver in a background task to keep the
+                // channel alive and log sidecar output.
+                tauri::async_runtime::spawn(async move {
+                    drain_sidecar_events(rx).await;
+                });
+
+                // Poll health in the background, then emit event.
+                let handle = app_handle.clone();
+                tauri::async_runtime::spawn(async move {
+                    match poll_health(port, 30).await {
+                        Ok(()) => {
+                            let _ = handle.emit("sidecar-ready", SidecarReadyPayload { port });
+                        }
+                        Err(e) => {
+                            eprintln!("Sidecar health poll failed: {e}");
+                        }
+                    }
+                });
+
+                // Spawn succeeded — break out of the retry loop.
+                return;
+            }
+            Err(e) => {
+                eprintln!("Failed to spawn sidecar (attempt {attempt}): {e}");
+            }
         }
     }
+
+    eprintln!("All 3 sidecar spawn attempts failed");
 }
 
 /// Read sidecar stdout/stderr and log it. Runs until the process terminates.
@@ -153,6 +162,9 @@ async fn drain_sidecar_events(mut rx: tokio::sync::mpsc::Receiver<CommandEvent>)
             CommandEvent::Terminated(payload) => {
                 eprintln!("Sidecar terminated: code={:?} signal={:?}", payload.code, payload.signal);
                 break;
+            }
+            CommandEvent::Error(msg) => {
+                eprintln!("[sidecar] error: {msg}");
             }
             _ => {}
         }
@@ -176,9 +188,11 @@ pub fn run() {
         }))
         .invoke_handler(tauri::generate_handler![get_sidecar_port])
         .setup(|app| {
-            // Initialize updater plugin (desktop only).
-            #[cfg(desktop)]
-            app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
+            // Updater disabled until a signing keypair is generated.
+            // To enable: run `tauri signer generate`, set pubkey in tauri.conf.json,
+            // and uncomment the line below.
+            // #[cfg(desktop)]
+            // app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
 
             spawn_sidecar(app.handle());
             Ok(())
@@ -195,7 +209,9 @@ pub fn run() {
             };
             if let Some(child) = child {
                 println!("Killing sidecar on app exit");
-                let _ = child.kill();
+                if let Err(e) = child.kill() {
+                    eprintln!("Failed to kill sidecar: {e}");
+                }
             }
         }
     });

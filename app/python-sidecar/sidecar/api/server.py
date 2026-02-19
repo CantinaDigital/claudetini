@@ -53,6 +53,7 @@ from .routes import (
     readiness,
     reconciliation,
     roadmap,
+    settings,
     timeline,
 )
 
@@ -114,6 +115,7 @@ app.include_router(bootstrap.router, prefix="/api", tags=["bootstrap"])
 app.include_router(parallel.router, prefix="/api/parallel", tags=["parallel"])
 app.include_router(intelligence.router, prefix="/api", tags=["intelligence"])
 app.include_router(product_map.router, prefix="/api", tags=["product-map"])
+app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
 
 
 @app.get("/health")

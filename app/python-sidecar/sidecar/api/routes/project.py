@@ -19,7 +19,7 @@ try:
     from src.core.health import HealthChecker, HealthLevel
     from src.core.git_utils import GitUtils
     from src.core.provider_usage import ProviderUsageStore
-    from src.core.runtime import project_id_for_path
+    from src.core.runtime import project_id_for_path, project_runtime_dir
     from src.core.sessions import SessionParser
     CORE_AVAILABLE = True
 except ImportError as e:
@@ -340,6 +340,65 @@ def get_project_health(project_id: str) -> HealthResponse:
         ],
         score=status.overall_score,
     )
+
+
+class ActionResponse(BaseModel):
+    success: bool
+    message: str
+
+
+# IMPORTANT: These routes MUST be defined BEFORE the generic /{project_id:path} route
+@router.post("/{project_id:path}/clear-history")
+def clear_project_history(project_id: str) -> ActionResponse:
+    """Clear dispatch output logs for a project.
+
+    Removes all log files from the project's dispatch-output directory
+    without affecting the project registration or other runtime data.
+    """
+    if not CORE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Core modules not loaded")
+
+    project_path = _get_project_path(project_id)
+    if not project_path:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    pid = project_id_for_path(project_path)
+    runtime_dir = project_runtime_dir(pid)
+    dispatch_dir = runtime_dir / "dispatch-output"
+
+    removed = 0
+    if dispatch_dir.exists():
+        for log_file in dispatch_dir.iterdir():
+            if log_file.is_file():
+                try:
+                    log_file.unlink()
+                    removed += 1
+                except OSError as exc:
+                    logger.warning("Failed to remove log file %s: %s", log_file, exc)
+
+    logger.info("Cleared %d dispatch log(s) for project %s", removed, project_id)
+    return ActionResponse(success=True, message=f"History cleared ({removed} log files removed)")
+
+
+@router.delete("/{project_id:path}/remove")
+def remove_project(project_id: str) -> ActionResponse:
+    """Remove a project from the registry.
+
+    Unregisters the project so it no longer appears in the project list.
+    Does NOT delete any project files on disk.
+    """
+    if not CORE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Core modules not loaded")
+
+    project_path = _get_project_path(project_id)
+    if not project_path:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    registry = ProjectRegistry.load_or_create()
+    registry.remove_project(project_path)
+
+    logger.info("Removed project %s from registry", project_id)
+    return ActionResponse(success=True, message="Project removed")
 
 
 # Generic project detail route - MUST be last due to {project_id:path} matching everything
