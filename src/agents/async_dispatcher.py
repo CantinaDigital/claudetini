@@ -78,9 +78,16 @@ async def async_dispatch_stream(
     Yields:
         Tuples of (event_type, data)
     """
+    import os
+
     project_path = working_dir.resolve()
     # Using list form prevents shell injection - arguments are passed directly
-    command = [cli_path, "-p", prompt]
+    # Include --permission-mode acceptEdits so CLI doesn't hang on prompts
+    command = [cli_path, "--permission-mode", "acceptEdits", "-p", prompt]
+
+    # Remove ANTHROPIC_API_KEY to force OAuth login (matches sync dispatcher)
+    env = os.environ.copy()
+    env.pop("ANTHROPIC_API_KEY", None)
 
     # Open output file if specified
     file_handle = None
@@ -95,21 +102,27 @@ async def async_dispatch_stream(
         yield ("status", "Launching Claude Code CLI...")
 
         # create_subprocess_exec is safe - it doesn't invoke a shell
+        # stdin=DEVNULL prevents hanging when Claude CLI tries to
+        # read input in a non-TTY environment (e.g. sidecar daemon)
         proc = await asyncio.create_subprocess_exec(
             *command,
             cwd=project_path,
+            stdin=asyncio.subprocess.DEVNULL,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
+            env=env,
             limit=1024 * 1024,  # 1MB buffer
         )
 
         yield ("status", "Claude Code is processing your task...")
 
         start_time = asyncio.get_event_loop().time()
+        last_keepalive = start_time
 
         while True:
             # Check timeout
-            elapsed = asyncio.get_event_loop().time() - start_time
+            now = asyncio.get_event_loop().time()
+            elapsed = now - start_time
             if elapsed > timeout_seconds:
                 proc.kill()
                 await proc.wait()
@@ -121,11 +134,32 @@ async def async_dispatch_stream(
             try:
                 line_bytes = await asyncio.wait_for(
                     proc.stdout.readline(),
-                    timeout=0.1
+                    timeout=0.5
                 )
             except TimeoutError:
-                # No data available, check if process ended
+                # No data available yet — send keepalive every 5s
+                if now - last_keepalive >= 5.0:
+                    yield ("status", f"Processing… ({int(elapsed)}s)")
+                    last_keepalive = now
+                # When process exits, drain remaining pipe data then break.
+                # We can't just wait for EOF because child processes may
+                # inherit the pipe fd, keeping it open indefinitely.
                 if proc.returncode is not None:
+                    try:
+                        remaining = await asyncio.wait_for(
+                            proc.stdout.read(), timeout=5.0,
+                        )
+                        if remaining:
+                            for line in remaining.decode(
+                                "utf-8", errors="replace"
+                            ).splitlines():
+                                output_lines.append(line)
+                                if file_handle:
+                                    file_handle.write(line + "\n")
+                                    file_handle.flush()
+                                yield ("output", line)
+                    except (TimeoutError, Exception):
+                        pass
                     break
                 continue
 

@@ -18,7 +18,7 @@ from ..core.secrets_scanner import SecretsScanner
 from .executor import GateExecutor, _strip_ansi
 from .hooks import GitPrePushHookManager
 
-GateType = Literal["command", "agent", "secrets"]
+GateType = Literal["command", "agent", "secrets", "hook"]
 GateStatus = Literal["pass", "warn", "fail", "skipped", "error"]
 
 
@@ -202,6 +202,11 @@ class QualityGateRunner:
                     fail_threshold=int(source.get("fail_threshold", 3) or 3),
                 )
 
+        # Merge any Claude Code hooks detected from settings files.
+        for hook_gate in self._detect_claude_hooks():
+            if hook_gate.name not in self.gates:
+                self.gates[hook_gate.name] = hook_gate
+
         return self.gates
 
     def save_config(self, triggers: dict | None = None) -> None:
@@ -240,20 +245,8 @@ class QualityGateRunner:
         secrets_result = self._run_secrets_gate(secrets_gate, staged_only=staged_only)
         results.append(secrets_result)
 
-        if secrets_result.status == "fail" and secrets_gate.hard_stop:
-            report = GateReport(
-                results=results,
-                timestamp=datetime.now(),
-                run_id=run_id,
-                session_id=session_id,
-                trigger=trigger,
-                changed_files=changed,
-                head_sha=head_sha,
-                index_fingerprint=index_fp,
-                working_tree_fingerprint=worktree_fp,
-            )
-            self._persist(report)
-            return report
+        # All gates run regardless of individual failures — hard_stop only
+        # affects the overall report status, not whether other gates execute.
 
         command_configs = []
         agent_configs = []
@@ -270,20 +263,55 @@ class QualityGateRunner:
                     )
                 )
                 continue
+            if gate.gate_type == "hook":
+                # Hook gates are informational — they represent Claude Code
+                # hooks detected from settings files. We can't execute them
+                # (they run inside Claude Code's process), so report them.
+                results.append(GateResult(
+                    name=gate.name,
+                    status="pass",
+                    message=f"Claude Code hook: {gate.command or 'agent hook'}",
+                    details=gate.agent_prompt,
+                    hard_stop=gate.hard_stop,
+                ))
+                continue
             if gate.gate_type == "command":
                 command_configs.append(self._config_payload(gate))
             elif gate.gate_type == "agent":
                 agent_configs.append(self._config_payload(gate))
 
-        for outcome in self.executor.run_command_gates(command_configs):
-            results.append(self._from_stored(outcome))
+        try:
+            for outcome in self.executor.run_command_gates(command_configs):
+                results.append(self._from_stored(outcome))
+        except Exception as exc:
+            # Record an error for each command gate that didn't produce a result.
+            ran_names = {r.name for r in results}
+            for cfg in command_configs:
+                if cfg.get("name") not in ran_names:
+                    results.append(GateResult(
+                        name=cfg.get("name", "unknown"),
+                        status="error",
+                        message=f"Executor error: {exc}",
+                        hard_stop=cfg.get("hard_stop", False),
+                    ))
 
-        for outcome in self.executor.run_agent_gates(
-            agent_configs,
-            changed_files=changed,
-            system_prompt_file=system_prompt_file,
-        ):
-            results.append(self._from_stored(outcome))
+        try:
+            for outcome in self.executor.run_agent_gates(
+                agent_configs,
+                changed_files=changed,
+                system_prompt_file=system_prompt_file,
+            ):
+                results.append(self._from_stored(outcome))
+        except Exception as exc:
+            ran_names = {r.name for r in results}
+            for cfg in agent_configs:
+                if cfg.get("name") not in ran_names:
+                    results.append(GateResult(
+                        name=cfg.get("name", "unknown"),
+                        status="error",
+                        message=f"Executor error: {exc}",
+                        hard_stop=cfg.get("hard_stop", False),
+                    ))
 
         report = GateReport(
             results=results,
@@ -634,6 +662,99 @@ class QualityGateRunner:
             commands["lint"] = "golangci-lint run"
 
         return commands
+
+    def _detect_claude_hooks(self) -> list[GateConfig]:
+        """Read Claude Code settings files and extract hook definitions.
+
+        Checks three locations (in priority order):
+        1. <project>/.claude/settings.json       (project, committed)
+        2. <project>/.claude/settings.local.json  (project, local)
+        3. ~/.claude/settings.json                (global)
+
+        Returns GateConfig entries of type "hook" for any PreToolUse hooks found.
+        """
+        settings_files = [
+            self.project_path / ".claude" / "settings.json",
+            self.project_path / ".claude" / "settings.local.json",
+            Path.home() / ".claude" / "settings.json",
+        ]
+
+        hooks_found: list[GateConfig] = []
+        seen_commands: set[str] = set()
+
+        for settings_path in settings_files:
+            if not settings_path.exists():
+                continue
+            try:
+                data = json.loads(settings_path.read_text())
+            except (json.JSONDecodeError, OSError):
+                continue
+
+            if not isinstance(data, dict):
+                continue
+
+            hooks_section = data.get("hooks", {})
+            if not isinstance(hooks_section, dict):
+                continue
+
+            for event_name, event_hooks in hooks_section.items():
+                if not isinstance(event_hooks, list):
+                    continue
+
+                for entry in event_hooks:
+                    if not isinstance(entry, dict):
+                        continue
+
+                    matcher = entry.get("matcher", "")
+                    inner_hooks = entry.get("hooks", [])
+                    if not isinstance(inner_hooks, list):
+                        continue
+
+                    for hook_def in inner_hooks:
+                        if not isinstance(hook_def, dict):
+                            continue
+
+                        hook_type = hook_def.get("type", "command")
+                        command = hook_def.get("command", "")
+                        prompt = hook_def.get("prompt", "")
+
+                        # Build a unique key to avoid duplicates across files.
+                        key = f"{event_name}:{matcher}:{command or prompt}"
+                        if key in seen_commands:
+                            continue
+                        seen_commands.add(key)
+
+                        # Build a readable name.
+                        if command:
+                            short = Path(command).name if "/" in command else command
+                            if len(short) > 30:
+                                short = short[:27] + "..."
+                            label = f"hook:{short}"
+                        elif prompt:
+                            label = f"hook:{prompt[:25]}..." if len(prompt) > 25 else f"hook:{prompt}"
+                        else:
+                            label = f"hook:{event_name}"
+
+                        detail_parts = [f"Event: {event_name}"]
+                        if matcher:
+                            detail_parts.append(f"Matcher: {matcher}")
+                        if command:
+                            detail_parts.append(f"Command: {command}")
+                        if prompt:
+                            detail_parts.append(f"Prompt: {prompt}")
+                        detail_parts.append(f"Source: {settings_path.name}")
+
+                        hooks_found.append(GateConfig(
+                            name=label,
+                            gate_type="hook",
+                            enabled=True,
+                            hard_stop=False,
+                            command=command or None,
+                            agent_prompt="\n".join(detail_parts),
+                            auto_detect=False,
+                        ))
+
+        return hooks_found
 
     def _changed_files(self, staged_only: bool) -> list[str]:
         if not (self.project_path / ".git").exists():

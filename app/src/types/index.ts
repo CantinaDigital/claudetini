@@ -189,13 +189,13 @@ export interface GateReport {
   runId: string;
   timestamp: string;
   trigger: string;
-  overallStatus: "pass" | "warn" | "fail";
+  overallStatus: "pass" | "warn" | "fail" | "pending";
   changedFiles: string[];
 }
 
 export interface Gate {
   name: string;
-  status: "pass" | "warn" | "fail" | "skipped" | "error";
+  status: "pass" | "warn" | "fail" | "skipped" | "error" | "pending";
   message: string;
   detail?: string;
   findings: GateFinding[];
@@ -865,6 +865,8 @@ export interface IntelligenceReport {
   scan_duration_ms: number;
   scans_completed: number;
   scans_failed: number;
+  commit_hash?: string;
+  scanners_rerun?: string[];
 }
 
 // ============================================
@@ -895,6 +897,8 @@ export interface ProductMapResponse {
   generated_at: string;
   features: ProductFeature[];
   avg_readiness: number;
+  commit_hash?: string;
+  scan_mode?: string;  // "full" | "delta" | "cached"
 }
 
 

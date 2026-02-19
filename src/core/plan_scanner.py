@@ -53,10 +53,16 @@ class ProjectPlanScanner:
     ]
     EMBEDDED_KEYWORDS = ("roadmap", "todo", "tasks", "what's next", "next steps", "plan")
     HEURISTIC_KEYWORDS = ("roadmap", "todo", "backlog", "milestone", "sprint", "phase", "plan")
+    _WALK_SKIP_DIRS = {
+        ".git", "node_modules", "__pycache__", ".venv", "venv", "env",
+        ".tox", ".nox", ".pytest_cache", ".mypy_cache", ".ruff_cache",
+        "dist", "build", ".eggs", ".coverage",
+    }
 
     def __init__(self, project_path: Path, claude_dir: Path | None = None):
         self.project_path = project_path.resolve()
         self.claude_dir = claude_dir or (Path.home() / ".claude")
+        self._md_files_cache: list[Path] | None = None
 
     def scan(self) -> UnifiedProjectPlan:
         """Run all six tiers and return a unified project plan.
@@ -106,6 +112,23 @@ class ProjectPlanScanner:
             conflicts=conflicts,
         )
 
+    def _walk_markdown_files(self) -> list[Path]:
+        """Walk project tree for .md files, skipping heavy directories."""
+        if self._md_files_cache is not None:
+            return self._md_files_cache
+
+        import os
+
+        results = []
+        for dirpath, dirnames, filenames in os.walk(self.project_path):
+            dirnames[:] = [d for d in dirnames if d not in self._WALK_SKIP_DIRS]
+            for filename in filenames:
+                if filename.lower().endswith(".md"):
+                    results.append(Path(dirpath) / filename)
+
+        self._md_files_cache = results
+        return results
+
     def _scan_consolidated_only(self, consolidated_path: Path) -> UnifiedProjectPlan:
         """Scan only the consolidated roadmap (single source of truth).
 
@@ -145,7 +168,7 @@ class ProjectPlanScanner:
         items: list[PlanItem] = []
         sources: dict[PlanSource, set[Path]] = defaultdict(set)
 
-        for path in self.project_path.rglob("*.md"):
+        for path in self._walk_markdown_files():
             if path in excluded or not path.is_file():
                 continue
             if not any(pattern.match(path.name) for pattern in self.NUMBERED_PATTERNS):
@@ -448,7 +471,7 @@ class ProjectPlanScanner:
         items: list[PlanItem] = []
         sources: dict[PlanSource, set[Path]] = defaultdict(set)
 
-        for path in self.project_path.rglob("*.md"):
+        for path in self._walk_markdown_files():
             if path in excluded or not path.is_file():
                 continue
             try:

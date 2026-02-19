@@ -117,13 +117,15 @@ class TimelineBuilder:
             if cached and cached.fingerprint == fingerprint:
                 return [self._entry_from_dict(item) for item in (cached.data or [])][:limit]
 
+        # Process only enough sessions to fill the limit (small buffer for filtering)
+        process_count = min(len(sessions), limit + 10)
         entries = [
             self._build_entry(
                 session,
                 gate_reports_by_session,
                 audit_overrides_by_session,
             )
-            for session in sessions
+            for session in sessions[:process_count]
         ]
         entries = [entry for entry in entries if self._should_keep_claude_entry(entry)]
         entries.extend(self._supplemental_provider_entries())
@@ -187,8 +189,10 @@ class TimelineBuilder:
             override_events=override_events,
         )
 
+    _METADATA_MAX_BYTES = 2_000_000  # 2 MB cap per session file
+
     def _parse_session_metadata(self, log_path: Path) -> dict:
-        """Stream metadata from jsonl without loading full file."""
+        """Stream metadata from jsonl, capped at ~2 MB to avoid unbounded reads."""
         todos_created = 0
         todos_completed = 0
         roadmap_items_completed: list[str] = []
@@ -205,8 +209,12 @@ class TimelineBuilder:
         seen_usage_markers: set[str] = set()
 
         try:
+            bytes_read = 0
             with open(log_path) as handle:
                 for line in handle:
+                    bytes_read += len(line)
+                    if bytes_read > self._METADATA_MAX_BYTES:
+                        break
                     try:
                         entry = json.loads(line)
                     except json.JSONDecodeError:

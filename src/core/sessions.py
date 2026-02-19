@@ -120,26 +120,53 @@ class SessionParser:
         return sessions
 
     def _extract_timestamps(self, log_path: Path) -> list[datetime]:
-        """Extract timestamps from a JSONL log file."""
+        """Extract first and last timestamps from a JSONL log file.
+
+        Only reads the first line and last few KB instead of the entire file.
+        """
         timestamps = []
 
         try:
-            with open(log_path) as f:
-                for line in f:
-                    try:
-                        entry = json.loads(line)
-                        if "timestamp" in entry:
-                            ts = entry["timestamp"]
-                            if isinstance(ts, str):
-                                # Try to parse ISO format
-                                dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
-                                timestamps.append(dt)
-                    except (json.JSONDecodeError, ValueError):
-                        continue
+            with open(log_path, "rb") as f:
+                # Read first line for start timestamp
+                first_line = f.readline()
+                if first_line:
+                    self._parse_timestamp_line(
+                        first_line.decode("utf-8", errors="ignore"), timestamps
+                    )
+
+                # Seek to end and read last chunk for end timestamp
+                f.seek(0, 2)
+                file_size = f.tell()
+                if file_size > len(first_line):
+                    read_size = min(file_size, 8192)
+                    f.seek(file_size - read_size)
+                    chunk = f.read().decode("utf-8", errors="ignore")
+                    for line in reversed(chunk.strip().split("\n")):
+                        if self._parse_timestamp_line(line, timestamps):
+                            break
         except Exception:
             pass
 
         return timestamps
+
+    @staticmethod
+    def _parse_timestamp_line(line: str, timestamps: list[datetime]) -> bool:
+        """Parse a timestamp from a JSONL line, appending to timestamps list.
+
+        Returns True if a timestamp was found.
+        """
+        try:
+            entry = json.loads(line)
+            if "timestamp" in entry:
+                ts = entry["timestamp"]
+                if isinstance(ts, str):
+                    dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                    timestamps.append(dt)
+                    return True
+        except (json.JSONDecodeError, ValueError):
+            pass
+        return False
 
     def parse_log_entries(self, log_path: Path, limit: int = 100) -> list[SessionLogEntry]:
         """Parse entries from a JSONL session log.

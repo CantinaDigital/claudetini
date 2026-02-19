@@ -233,8 +233,9 @@ async function fetchApi<T>(
 
     const promise = _doFetch<T>(url, endpoint, options);
     _inflightGets.set(url, promise);
-    promise.finally(() => _inflightGets.delete(url));
-    return promise;
+    // Chain cleanup into the returned promise so we don't create an
+    // uncaught derived promise (Safari reports it as Unhandled Rejection)
+    return promise.finally(() => _inflightGets.delete(url));
   }
 
   return _doFetch<T>(url, endpoint, options);
@@ -658,7 +659,7 @@ export const api = {
 
   getLiveSessions: (projectId: string) =>
     fetchApi<LiveSessionResponse>(`/api/live-sessions/${encodeURIComponent(projectId)}`, {
-      timeoutMs: 5000,
+      timeoutMs: 15000,
     }),
 
   // =====================================
@@ -927,8 +928,8 @@ export const api = {
   // Intelligence
   // =====================================
 
-  scanIntelligence: (projectPath: string) =>
-    fetchApi<IntelligenceReport>("/api/intelligence/scan", {
+  scanIntelligence: (projectPath: string, force = false) =>
+    fetchApi<IntelligenceReport>(`/api/intelligence/scan${force ? "?force=true" : ""}`, {
       method: "POST",
       body: JSON.stringify({ project_path: projectPath }),
       timeoutMs: 120000,
@@ -960,12 +961,78 @@ export const api = {
   // Product Map
   // =====================================
 
-  scanProductMap: (projectPath: string) =>
-    fetchApi<ProductMapResponse>("/api/product-map/scan", {
-      method: "POST",
-      body: JSON.stringify({ project_path: projectPath }),
-      timeoutMs: 180000,
-    }),
+  /**
+   * Start a product map scan (background job + polling).
+   * POST kicks off the scan, then we poll GET /scan/status every 3s.
+   * onStatus fires with progress updates so the UI can show a live status.
+   * Returns a promise that resolves with the final ProductMapResponse.
+   */
+  scanProductMap: (
+    projectPath: string,
+    onStatus?: (msg: string) => void,
+    force = false,
+  ): { promise: Promise<ProductMapResponse>; abort: () => void } => {
+    let aborted = false;
+    let timer: ReturnType<typeof setInterval> | null = null;
+
+    const promise = (async () => {
+      // 1. Kick off the background scan
+      const startResp = await fetch(`${API_BASE_URL}/api/product-map/scan${force ? "?force=true" : ""}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project_path: projectPath }),
+      });
+      if (!startResp.ok) {
+        const text = await startResp.text();
+        throw new Error(`Scan start failed (${startResp.status}): ${text}`);
+      }
+
+      onStatus?.("Claude is analyzing your project...");
+
+      // 2. Poll for completion
+      const encoded = encodeURIComponent(projectPath);
+      return new Promise<ProductMapResponse>((resolve, reject) => {
+        const poll = async () => {
+          if (aborted) {
+            if (timer) clearInterval(timer);
+            reject(new Error("Scan aborted"));
+            return;
+          }
+          try {
+            const resp = await fetch(
+              `${API_BASE_URL}/api/product-map/scan/status?project_path=${encoded}`,
+            );
+            if (!resp.ok) return; // retry next tick
+            const data = await resp.json();
+
+            if (data.progress) onStatus?.(data.progress);
+
+            if (data.status === "done" && data.result) {
+              if (timer) clearInterval(timer);
+              resolve(data.result as ProductMapResponse);
+            } else if (data.status === "error") {
+              if (timer) clearInterval(timer);
+              reject(new Error(data.error || "Scan failed"));
+            }
+            // else "running" or "idle" — keep polling
+          } catch {
+            // Network hiccup — keep polling
+          }
+        };
+
+        // Poll immediately, then every 3s
+        void poll();
+        timer = setInterval(poll, 3000);
+      });
+    })();
+
+    const abort = () => {
+      aborted = true;
+      if (timer) clearInterval(timer);
+    };
+
+    return { promise, abort };
+  },
 
   getProductMap: (projectPath: string) =>
     fetchApi<ProductMapResponse>(

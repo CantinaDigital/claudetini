@@ -93,7 +93,7 @@ class HealthChecker:
         from .secrets_scanner import SecretsScanner
 
         scanner = SecretsScanner(self.path)
-        result = scanner.scan(staged_only=False)
+        result = scanner.scan(staged_only=True)
 
         if result.is_clean:
             return HealthCheck(

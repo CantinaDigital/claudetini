@@ -4,12 +4,16 @@ Orchestrates the five core scanners (hardcoded, integration, freshness,
 dependency, feature) and exposes them via REST endpoints for the frontend.
 """
 
+import asyncio
+import fnmatch
+import json
 import logging
+import subprocess
 import time
 from datetime import UTC, datetime
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from src.core.dependency_analyzer import DependencyAnalyzer, DependencyReport
@@ -17,6 +21,7 @@ from src.core.feature_inventory import FeatureInventory, FeatureInventoryScanner
 from src.core.freshness_analyzer import FreshnessAnalyzer, FreshnessReport
 from src.core.hardcoded_scanner import HardcodedScanner, HardcodedScanResult
 from src.core.integration_scanner import IntegrationReport, IntegrationScanner
+from src.core.runtime import project_id_for_path, project_runtime_dir
 
 logger = logging.getLogger(__name__)
 
@@ -223,6 +228,8 @@ class IntelligenceReportResponse(BaseModel):
     scan_duration_ms: int
     scans_completed: int
     scans_failed: int
+    commit_hash: str | None = None
+    scanners_rerun: list[str] | None = None
 
 
 # ── Converters ──────────────────────────────────────────────────────
@@ -772,128 +779,374 @@ def _run_scanner(scanner_name: str, project_path: Path):
         )
 
 
-# ── In-memory cache for reports ─────────────────────────────────────
+# ── Scanner defaults (for fallback on failure) ────────────────────
+
+_SCANNER_DEFAULTS: dict[str, object] = {
+    "hardcoded": lambda: HardcodedScanResultResponse(findings=[], scanned_file_count=0),
+    "integration": lambda: IntegrationMapResponse(integrations=[], services_detected=[], files_scanned=0),
+    "freshness": lambda: FreshnessReportResponse(
+        files=[], age_distribution=AgeDistributionResponse(fresh=0, aging=0, stale=0, abandoned=0),
+        stale_files=[], abandoned_files=[], single_commit_files=[], freshness_score=100,
+    ),
+    "dependency": lambda: [],
+    "feature": lambda: FeatureInventoryResponse(
+        features=[], by_category={}, roadmap_mappings={},
+        untracked_features=[], total_features=0, most_coupled=[], import_counts={},
+    ),
+}
+
+ALL_SCANNER_NAMES = ["hardcoded", "integration", "freshness", "dependency", "feature"]
+
+
+def _run_scanner_safe(scanner_name: str, project_path: Path) -> tuple[str, object, bool]:
+    """Run a scanner with error handling. Returns (name, result, succeeded)."""
+    try:
+        result = _run_scanner(scanner_name, project_path)
+        return (scanner_name, result, True)
+    except Exception:
+        logger.exception("%s scanner failed", scanner_name)
+        return (scanner_name, _SCANNER_DEFAULTS[scanner_name](), False)
+
+
+# ── Git helpers ────────────────────────────────────────────────────
+
+def _get_git_head(project_path: Path) -> str | None:
+    """Get current HEAD commit hash, or None if not a git repo."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=project_path, capture_output=True, text=True, timeout=5,
+        )
+        return result.stdout.strip() if result.returncode == 0 else None
+    except Exception:
+        return None
+
+
+def _get_changed_files(project_path: Path, from_commit: str, to_commit: str) -> set[str] | None:
+    """Get files changed between two commits. Returns None on error (run all scanners)."""
+    try:
+        result = subprocess.run(
+            ["git", "diff", "--name-only", from_commit, to_commit],
+            cwd=project_path, capture_output=True, text=True, timeout=10,
+        )
+        if result.returncode != 0:
+            return None
+        lines = result.stdout.strip()
+        return set(lines.splitlines()) if lines else set()
+    except Exception:
+        return None
+
+
+# ── Smart diff: which scanners care about which files ──────────────
+
+SCANNER_FILE_PATTERNS: dict[str, list[str]] = {
+    "hardcoded": ["*.py", "*.js", "*.ts", "*.tsx", "*.jsx", "*.json", "*.yaml", "*.yml", "*.toml", "*.env", "*.ini", "*.cfg", "*.conf"],
+    "integration": ["*.py", "*.js", "*.ts", "*.tsx", "*.jsx", "*.json", "*.yaml", "*.yml"],
+    "freshness": ["*.py", "*.js", "*.ts", "*.tsx", "*.jsx", "*.java", "*.go", "*.rb", "*.rs"],
+    "dependency": ["package.json", "pyproject.toml", "requirements.txt", "Cargo.toml", "go.mod"],
+    "feature": ["*.py", "*.js", "*.ts", "*.tsx", "*.jsx", "*.mjs"],
+}
+
+
+def _scanners_needing_rerun(changed_files: set[str]) -> list[str]:
+    """Determine which scanners need re-running based on changed files."""
+    needs_rerun: list[str] = []
+    for scanner_name, patterns in SCANNER_FILE_PATTERNS.items():
+        for changed_file in changed_files:
+            basename = changed_file.split("/")[-1]
+            if any(fnmatch.fnmatch(basename, pat) or fnmatch.fnmatch(changed_file, pat) for pat in patterns):
+                needs_rerun.append(scanner_name)
+                break
+    return needs_rerun
+
+
+# ── Snapshot persistence ───────────────────────────────────────────
+
+def _get_snapshot_path(project_path: Path) -> Path:
+    """Get path to the snapshot metadata file."""
+    project_id = project_id_for_path(project_path)
+    runtime_dir = project_runtime_dir(project_id)
+    return runtime_dir / "intelligence-snapshot.json"
+
+
+def _load_snapshot(project_path: Path) -> dict | None:
+    """Load the last scan snapshot metadata."""
+    path = _get_snapshot_path(project_path)
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def _save_snapshot(project_path: Path, commit: str | None, scanners_run: list[str]) -> None:
+    """Save snapshot metadata after a scan."""
+    path = _get_snapshot_path(project_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Load existing snapshot to preserve per-scanner versions
+    existing = _load_snapshot(project_path) or {}
+    scanner_versions = existing.get("scanner_versions", {})
+    for name in scanners_run:
+        scanner_versions[name] = commit
+
+    snapshot = {
+        "commit": commit,
+        "generated_at": datetime.now(UTC).isoformat(),
+        "scanner_versions": scanner_versions,
+    }
+    try:
+        path.write_text(json.dumps(snapshot, indent=2), encoding="utf-8")
+    except Exception:
+        logger.warning("Failed to save intelligence snapshot to %s", path)
+
+
+# ── Cache (in-memory + disk) ───────────────────────────────────────
 
 _report_cache: dict[str, IntelligenceReportResponse] = {}
 _light_summary_cache: dict[str, IntelligenceSummaryLightResponse] = {}
 
 
+def _get_cache_paths(project_path: Path) -> tuple[Path, Path]:
+    """Get on-disk cache paths for a project's intelligence data."""
+    project_id = project_id_for_path(project_path)
+    runtime_dir = project_runtime_dir(project_id)
+    return (
+        runtime_dir / "intelligence-report.json",
+        runtime_dir / "intelligence-summary.json",
+    )
+
+
+def _load_cached_report(project_path: Path) -> IntelligenceReportResponse | None:
+    """Load intelligence report from in-memory cache or disk."""
+    cache_key = str(project_path)
+    if cache_key in _report_cache:
+        return _report_cache[cache_key]
+
+    report_file, summary_file = _get_cache_paths(project_path)
+    if report_file.exists():
+        try:
+            data = json.loads(report_file.read_text(encoding="utf-8"))
+            report = IntelligenceReportResponse(**data)
+            _report_cache[cache_key] = report
+            # Also restore the light summary if it exists on disk
+            if summary_file.exists() and cache_key not in _light_summary_cache:
+                sdata = json.loads(summary_file.read_text(encoding="utf-8"))
+                _light_summary_cache[cache_key] = IntelligenceSummaryLightResponse(**sdata)
+            return report
+        except Exception:
+            logger.warning("Failed to load cached intelligence report from %s", report_file)
+    return None
+
+
+def _load_cached_summary(project_path: Path) -> IntelligenceSummaryLightResponse | None:
+    """Load intelligence summary from in-memory cache or disk."""
+    cache_key = str(project_path)
+    if cache_key in _light_summary_cache:
+        return _light_summary_cache[cache_key]
+
+    _, summary_file = _get_cache_paths(project_path)
+    if summary_file.exists():
+        try:
+            data = json.loads(summary_file.read_text(encoding="utf-8"))
+            summary = IntelligenceSummaryLightResponse(**data)
+            _light_summary_cache[cache_key] = summary
+            return summary
+        except Exception:
+            logger.warning("Failed to load cached intelligence summary from %s", summary_file)
+    return None
+
+
+def _save_cached(
+    project_path: Path,
+    report: IntelligenceReportResponse,
+    summary: IntelligenceSummaryLightResponse,
+) -> None:
+    """Save intelligence data to both in-memory and disk cache."""
+    cache_key = str(project_path)
+    _report_cache[cache_key] = report
+    _light_summary_cache[cache_key] = summary
+
+    report_file, summary_file = _get_cache_paths(project_path)
+    report_file.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        report_file.write_text(report.model_dump_json(indent=2), encoding="utf-8")
+        summary_file.write_text(summary.model_dump_json(indent=2), encoding="utf-8")
+    except Exception:
+        logger.warning("Failed to save intelligence cache to %s", report_file.parent)
+
+
 # ── Endpoints ───────────────────────────────────────────────────────
 
-@router.post("/scan", response_model=IntelligenceReportResponse)
-async def scan_intelligence(request: ScanRequest) -> IntelligenceReportResponse:
-    """Run a full intelligence scan across all scanners.
+async def _run_scanners_parallel(
+    project_path: Path,
+    scanner_names: list[str],
+) -> dict[str, tuple[object, bool]]:
+    """Run the given scanners in parallel via thread pool.
 
-    Executes hardcoded, integration, freshness, dependency, and feature
-    scanners, then computes an aggregate summary with overall score and grade.
+    Returns dict of scanner_name -> (result, succeeded).
+    """
+    tasks = [
+        asyncio.to_thread(_run_scanner_safe, name, project_path)
+        for name in scanner_names
+    ]
+    results = await asyncio.gather(*tasks)
+    return {name: (result, ok) for name, result, ok in results}
+
+
+def _build_report(
+    project_path: Path,
+    scanner_results: dict[str, tuple[object, bool]],
+    elapsed_ms: int,
+    commit_hash: str | None,
+    scanners_rerun: list[str],
+) -> tuple[IntelligenceReportResponse, IntelligenceSummaryLightResponse]:
+    """Build a full report + light summary from scanner results."""
+    hardcoded = scanner_results["hardcoded"][0]
+    integrations = scanner_results["integration"][0]
+    freshness = scanner_results["freshness"][0]
+    dep_ecosystems = scanner_results["dependency"][0]
+    features = scanner_results["feature"][0]
+
+    scans_completed = sum(1 for _, ok in scanner_results.values() if ok)
+    scans_failed = sum(1 for _, ok in scanner_results.values() if not ok)
+
+    summary = _compute_summary(hardcoded, dep_ecosystems, freshness)
+    overall_score, grade = _compute_score_and_grade(
+        hardcoded, dep_ecosystems, integrations, freshness, features,
+    )
+    top_issues = _build_top_issues(hardcoded, dep_ecosystems, freshness, features)
+    light_summary = _build_light_summary(
+        hardcoded, dep_ecosystems, integrations, freshness, features,
+    )
+    total_files_scanned = hardcoded.scanned_file_count + integrations.files_scanned
+
+    report = IntelligenceReportResponse(
+        project_path=str(project_path),
+        generated_at=datetime.now(UTC).isoformat(),
+        overall_score=overall_score,
+        grade=grade,
+        hardcoded=hardcoded,
+        dependencies=dep_ecosystems,
+        integrations=integrations,
+        freshness=freshness,
+        features=features,
+        summary=summary,
+        top_issues=top_issues,
+        category_scores=light_summary.categories,
+        total_files_scanned=total_files_scanned,
+        scan_duration_ms=elapsed_ms,
+        scans_completed=scans_completed,
+        scans_failed=scans_failed,
+        commit_hash=commit_hash,
+        scanners_rerun=scanners_rerun,
+    )
+    return report, light_summary
+
+
+@router.post("/scan", response_model=IntelligenceReportResponse)
+async def scan_intelligence(
+    request: ScanRequest,
+    force: bool = Query(False, description="Force full rescan, ignoring diff cache"),
+) -> IntelligenceReportResponse:
+    """Run an intelligence scan across all scanners.
+
+    By default uses smart diffing: only re-runs scanners whose relevant files
+    changed since the last snapshot. Pass force=true to re-run all scanners.
+
+    All scanners execute in parallel for maximum speed.
     """
     project_path = _validate_project_path(request.project_path)
-    logger.info("Starting full intelligence scan for %s", project_path)
+    current_commit = _get_git_head(project_path)
 
     start_time = time.monotonic()
-    scans_completed = 0
-    scans_failed = 0
 
     try:
-        # Run hardcoded scanner
-        try:
-            hardcoded = _hardcoded_to_response(HardcodedScanner(project_path).scan())
-            scans_completed += 1
-        except Exception:
-            logger.exception("Hardcoded scanner failed")
-            hardcoded = HardcodedScanResultResponse(findings=[], scanned_file_count=0)
-            scans_failed += 1
+        # ── Smart diff: determine which scanners to run ───────────
+        scanners_to_run = ALL_SCANNER_NAMES  # default: run all
+        cached_report = None
 
-        # Run integration scanner
-        try:
-            integrations = _integration_to_response(IntegrationScanner(project_path).scan())
-            scans_completed += 1
-        except Exception:
-            logger.exception("Integration scanner failed")
-            integrations = IntegrationMapResponse(integrations=[], services_detected=[], files_scanned=0)
-            scans_failed += 1
+        if not force and current_commit:
+            snapshot = _load_snapshot(project_path)
+            if snapshot and snapshot.get("commit"):
+                prev_commit = snapshot["commit"]
+                if prev_commit == current_commit:
+                    # Same commit — check for uncommitted changes too
+                    changed_files = _get_changed_files(project_path, prev_commit, "HEAD")
+                    if changed_files is not None and len(changed_files) == 0:
+                        # Nothing changed — return cached report if available
+                        cached = _load_cached_report(project_path)
+                        if cached:
+                            elapsed_ms = int((time.monotonic() - start_time) * 1000)
+                            # Return cached with updated metadata
+                            cached.scan_duration_ms = elapsed_ms
+                            cached.scanners_rerun = []
+                            cached.commit_hash = current_commit
+                            logger.info(
+                                "Intelligence scan skipped for %s — no changes since %s, %dms",
+                                project_path, current_commit[:8], elapsed_ms,
+                            )
+                            return cached
+                else:
+                    # Different commit — check which files changed
+                    changed_files = _get_changed_files(project_path, prev_commit, current_commit)
+                    if changed_files is not None and len(changed_files) > 0:
+                        needed = _scanners_needing_rerun(changed_files)
+                        if needed and len(needed) < len(ALL_SCANNER_NAMES):
+                            # Partial rescan: load cached, re-run only affected scanners
+                            cached_report = _load_cached_report(project_path)
+                            if cached_report:
+                                scanners_to_run = needed
+                                logger.info(
+                                    "Partial rescan for %s: %d/%d scanners (%s)",
+                                    project_path, len(needed), len(ALL_SCANNER_NAMES),
+                                    ", ".join(needed),
+                                )
+                    elif changed_files is not None and len(changed_files) == 0:
+                        # Commits differ but no file changes (e.g. merge commit)
+                        cached = _load_cached_report(project_path)
+                        if cached:
+                            elapsed_ms = int((time.monotonic() - start_time) * 1000)
+                            cached.scan_duration_ms = elapsed_ms
+                            cached.scanners_rerun = []
+                            cached.commit_hash = current_commit
+                            _save_snapshot(project_path, current_commit, [])
+                            return cached
 
-        # Run freshness analyzer
-        try:
-            freshness = _freshness_to_response(FreshnessAnalyzer(project_path).analyze())
-            scans_completed += 1
-        except Exception:
-            logger.exception("Freshness analyzer failed")
-            freshness = FreshnessReportResponse(
-                files=[], age_distribution=AgeDistributionResponse(fresh=0, aging=0, stale=0, abandoned=0),
-                stale_files=[], abandoned_files=[], single_commit_files=[], freshness_score=100,
-            )
-            scans_failed += 1
+        is_full_scan = len(scanners_to_run) == len(ALL_SCANNER_NAMES)
+        log_msg = "full" if is_full_scan else f"partial ({len(scanners_to_run)}/{len(ALL_SCANNER_NAMES)})"
+        logger.info("Starting %s intelligence scan for %s", log_msg, project_path)
 
-        # Run dependency analyzer
-        try:
-            dep_report = DependencyAnalyzer(project_path).analyze()
-            dep_ecosystems = _dependency_to_ecosystems(dep_report)
-            scans_completed += 1
-        except Exception:
-            logger.exception("Dependency analyzer failed")
-            dep_ecosystems = []
-            scans_failed += 1
+        # ── Run scanners in parallel ──────────────────────────────
+        fresh_results = await _run_scanners_parallel(project_path, scanners_to_run)
 
-        # Run feature inventory scanner
-        try:
-            features = _feature_to_response(FeatureInventoryScanner(project_path).scan())
-            scans_completed += 1
-        except Exception:
-            logger.exception("Feature inventory scanner failed")
-            features = FeatureInventoryResponse(
-                features=[], by_category={}, roadmap_mappings={},
-                untracked_features=[], total_features=0, most_coupled=[], import_counts={},
-            )
-            scans_failed += 1
-
-        # Compute summary and score
-        summary = _compute_summary(hardcoded, dep_ecosystems, freshness)
-        overall_score, grade = _compute_score_and_grade(
-            hardcoded, dep_ecosystems, integrations, freshness, features,
-        )
-        top_issues = _build_top_issues(hardcoded, dep_ecosystems, freshness, features)
-
-        # Build category scores with top_finding
-        light_summary = _build_light_summary(
-            hardcoded, dep_ecosystems, integrations, freshness, features,
-        )
-
-        # Compute total files scanned
-        total_files_scanned = hardcoded.scanned_file_count + integrations.files_scanned
+        # ── Merge with cached results for partial rescans ─────────
+        if cached_report and not is_full_scan:
+            scanner_results: dict[str, tuple[object, bool]] = {}
+            for name in ALL_SCANNER_NAMES:
+                if name in fresh_results:
+                    scanner_results[name] = fresh_results[name]
+                else:
+                    # Use cached data
+                    cached_data = _get_scanner_data_from_report(cached_report, name)
+                    scanner_results[name] = (cached_data, True)
+        else:
+            scanner_results = fresh_results
 
         elapsed_ms = int((time.monotonic() - start_time) * 1000)
-
-        report = IntelligenceReportResponse(
-            project_path=str(project_path),
-            generated_at=datetime.now(UTC).isoformat(),
-            overall_score=overall_score,
-            grade=grade,
-            hardcoded=hardcoded,
-            dependencies=dep_ecosystems,
-            integrations=integrations,
-            freshness=freshness,
-            features=features,
-            summary=summary,
-            top_issues=top_issues,
-            category_scores=light_summary.categories,
-            total_files_scanned=total_files_scanned,
-            scan_duration_ms=elapsed_ms,
-            scans_completed=scans_completed,
-            scans_failed=scans_failed,
+        report, light_summary = _build_report(
+            project_path, scanner_results, elapsed_ms, current_commit, scanners_to_run,
         )
 
-        # Cache the report and light summary
-        cache_key = str(project_path)
-        _report_cache[cache_key] = report
-        _light_summary_cache[cache_key] = _build_light_summary(
-            hardcoded, dep_ecosystems, integrations, freshness, features,
-        )
+        # Cache the report and save snapshot
+        _save_cached(project_path, report, light_summary)
+        _save_snapshot(project_path, current_commit, scanners_to_run)
 
         logger.info(
-            "Intelligence scan complete for %s — score: %d (%s), %d/%d scanners ok, %dms",
-            project_path, overall_score, grade, scans_completed,
-            scans_completed + scans_failed, elapsed_ms,
+            "Intelligence scan complete for %s — score: %d (%s), %d/%d scanners ran, %dms",
+            project_path, report.overall_score, report.grade,
+            len(scanners_to_run), len(ALL_SCANNER_NAMES), elapsed_ms,
         )
 
         return report
@@ -905,33 +1158,49 @@ async def scan_intelligence(request: ScanRequest) -> IntelligenceReportResponse:
         raise HTTPException(status_code=500, detail=f"Intelligence scan failed: {exc}")
 
 
+def _get_scanner_data_from_report(
+    report: IntelligenceReportResponse, scanner_name: str,
+) -> object:
+    """Extract a scanner's data from an existing report for merge."""
+    if scanner_name == "hardcoded":
+        return report.hardcoded
+    elif scanner_name == "integration":
+        return report.integrations
+    elif scanner_name == "freshness":
+        return report.freshness
+    elif scanner_name == "dependency":
+        return report.dependencies
+    elif scanner_name == "feature":
+        return report.features
+    return _SCANNER_DEFAULTS[scanner_name]()
+
+
 @router.get("/summary/{project_path:path}", response_model=IntelligenceSummaryLightResponse)
 async def get_summary(project_path: str) -> IntelligenceSummaryLightResponse:
     """Get a lightweight intelligence summary for a project.
 
     Returns score, grade, per-category scores, and a staleness flag.
-    Uses the cached report if available; returns 404 otherwise.
+    Uses the cached report if available (in-memory or disk); returns 404 otherwise.
     """
-    resolved = str(Path(project_path).resolve())
-
-    if resolved not in _light_summary_cache:
+    resolved = Path(project_path).resolve()
+    cached = _load_cached_summary(resolved)
+    if not cached:
         raise HTTPException(status_code=404, detail=f"No cached report for: {project_path}. Run POST /scan first.")
-
-    return _light_summary_cache[resolved]
+    return cached
 
 
 @router.get("/{project_path:path}", response_model=IntelligenceReportResponse)
 async def get_cached_report(project_path: str) -> IntelligenceReportResponse:
     """Retrieve a cached intelligence report for a project.
 
-    Returns 404 if no cached report exists. Use POST /scan to generate one.
+    Returns 404 if no cached report exists (checked in-memory then disk).
+    Use POST /scan to generate one.
     """
-    resolved = str(Path(project_path).resolve())
-
-    if resolved not in _report_cache:
+    resolved = Path(project_path).resolve()
+    cached = _load_cached_report(resolved)
+    if not cached:
         raise HTTPException(status_code=404, detail=f"No cached report for: {project_path}. Run POST /scan first.")
-
-    return _report_cache[resolved]
+    return cached
 
 
 @router.post("/scan/{scanner_name}")

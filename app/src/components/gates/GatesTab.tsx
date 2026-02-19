@@ -9,7 +9,7 @@ import { InlineMarkdown } from "../ui/InlineMarkdown";
 import { api, isBackendConnected } from "../../api/backend";
 import { useSettingsStore } from "../../stores/settingsStore";
 
-type GateStatus = "pass" | "warn" | "fail" | "skipped" | "error";
+type GateStatus = "pass" | "warn" | "fail" | "skipped" | "error" | "pending";
 
 const GATE_ICONS: Record<string, string> = {
   secrets: "🔐",
@@ -21,6 +21,7 @@ const GATE_ICONS: Record<string, string> = {
   documentation: "📄",
   docs: "📄",
   test_coverage: "📊",
+  hook: "🪝",
 };
 
 interface GateUI {
@@ -55,6 +56,7 @@ function formatRelativeTime(timestamp: string): string {
 }
 
 function generateTrend(status: GateStatus): number[] {
+  if (status === "pending") return Array(10).fill(0.5);
   const base = status === "pass" ? 1 : status === "warn" ? 0.5 : 0;
   return Array(10).fill(base);
 }
@@ -94,7 +96,7 @@ export function GatesTab({ projectPath, isActive = true, onFix, onNavigateToSett
         : generateTrend(g.status as GateStatus);
       return {
         name: g.name.charAt(0).toUpperCase() + g.name.slice(1),
-        icon: GATE_ICONS[g.name.toLowerCase()] || "⚙️",
+        icon: GATE_ICONS[g.name.toLowerCase()] || (g.name.toLowerCase().startsWith("hook:") ? "🪝" : "⚙️"),
         status: g.status as GateStatus,
         detail: stripAnsi(g.message),
         finding: stripAnsi(g.detail || (g.findings.length > 0 ? g.findings[0].description : "") || "") || null,
@@ -263,13 +265,15 @@ export function GatesTab({ projectPath, isActive = true, onFix, onNavigateToSett
           {gates.map((gate, gi) => {
             const isExpanded = expandedGate === gate.name;
             const isFocused = focusedGateIndex === gi;
-            const statusColor = gate.status === "pass" ? t.green : gate.status === "warn" ? t.amber : t.red;
+            const statusColor = gate.status === "pass" ? t.green : gate.status === "warn" ? t.amber : gate.status === "pending" ? t.text3 : t.red;
             const borderClass = isFocused
               ? "border-mc-accent-border"
               : gate.status === "fail"
               ? "border-mc-red-border"
               : gate.status === "warn"
               ? "border-mc-amber-border"
+              : gate.status === "pending"
+              ? "border-mc-border-0 opacity-60"
               : "border-mc-border-0";
 
             return (

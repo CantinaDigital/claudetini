@@ -322,19 +322,19 @@ class SecretsScanner:
 
     def _get_all_files(self) -> list[Path]:
         """Get all files in the project (respecting skip directories and files)."""
+        import os
+
         files = []
-
-        for item in self.project_path.rglob("*"):
-            # Skip directories in SKIP_DIRECTORIES
-            if any(skip in item.parts for skip in self.SKIP_DIRECTORIES):
-                continue
-
-            # Skip specific files (e.g., this scanner file)
-            if item.name in self.SKIP_FILES:
-                continue
-
-            if item.is_file():
-                files.append(item)
+        for dirpath, dirnames, filenames in os.walk(self.project_path):
+            # Prune skip directories in-place so os.walk won't descend into them
+            dirnames[:] = [
+                d for d in dirnames
+                if d not in self.SKIP_DIRECTORIES and not d.endswith(".egg-info")
+            ]
+            for filename in filenames:
+                if filename in self.SKIP_FILES:
+                    continue
+                files.append(Path(dirpath) / filename)
 
         return files
 

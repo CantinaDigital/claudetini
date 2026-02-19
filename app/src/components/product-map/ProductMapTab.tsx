@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import type { ProductMapResponse, ProductFeature } from "../../types";
 import { api, isBackendConnected } from "../../api/backend";
 import { useProjectManager } from "../../managers/projectManager";
@@ -42,6 +42,8 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedFeature, setExpandedFeature] = useState<string | null>(null);
+  const [scanProgress, setScanProgress] = useState("Claude is analyzing your project...");
+  const abortRef = useRef<(() => void) | null>(null);
 
   // Load cached data on mount
   useEffect(() => {
@@ -64,18 +66,33 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
     return () => { cancelled = true; };
   }, [projectPath]);
 
-  // Generate handler
-  const handleGenerate = useCallback(async () => {
+  // Cleanup abort on unmount
+  useEffect(() => {
+    return () => { abortRef.current?.(); };
+  }, []);
+
+  // Generate handler — background job + polling
+  const handleGenerate = useCallback(async (force = false) => {
     if (!projectPath || !isBackendConnected()) return;
     setIsScanning(true);
     setError(null);
+    setScanProgress(force ? "Running full rescan..." : "Analyzing changes...");
+
     try {
-      const result = await api.scanProductMap(projectPath);
+      const { promise, abort } = api.scanProductMap(
+        projectPath,
+        (msg) => setScanProgress(msg),
+        force,
+      );
+      abortRef.current = abort;
+
+      const result = await promise;
       setProductMap(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Product map generation failed");
     } finally {
       setIsScanning(false);
+      abortRef.current = null;
     }
   }, [projectPath]);
 
@@ -101,6 +118,37 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
     );
   }
 
+  // Scanning state — progress indicator
+  if (isScanning) {
+    return (
+      <div className="max-w-[960px] mx-auto p-6">
+        <div className="flex flex-col items-center justify-center py-20 gap-5">
+          <div className="relative flex-shrink-0" style={{ width: 56, height: 56 }}>
+            <svg width={56} height={56} viewBox="0 0 56 56" className="animate-spin" style={{ animationDuration: "2s" }}>
+              <circle cx={28} cy={28} r={22} fill="none" stroke={t.surface3} strokeWidth={4} />
+              <circle
+                cx={28} cy={28} r={22} fill="none"
+                stroke={t.accent}
+                strokeWidth={4}
+                strokeDasharray={2 * Math.PI * 22}
+                strokeDashoffset={2 * Math.PI * 22 * 0.75}
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-mc-green animate-pulse" />
+            <span className="text-xs text-mc-text-1 font-mono">{scanProgress}</span>
+          </div>
+          <p className="text-[10px] text-mc-text-3 font-mono text-center max-w-xs">
+            Claude is reading source code, CLAUDE.md, ROADMAP.md, and git history.
+            This typically takes 1-3 minutes.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   // Empty state
   if (!productMap && !isLoading && !isScanning && !error) {
     return (
@@ -117,30 +165,12 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
             Product Map uses Claude to analyze your project at the product level —
             features, readiness, gaps, and dependencies.
           </p>
-          <Button primary onClick={handleGenerate} disabled={isScanning}>
+          <Button primary onClick={() => handleGenerate()} disabled={isScanning}>
             Generate Product Map
           </Button>
           <span className="text-[10px] text-mc-text-3 font-mono">
             Takes 1-3 minutes. Uses Claude Code to analyze the project.
           </span>
-        </div>
-      </div>
-    );
-  }
-
-  // Scanning state
-  if (isScanning) {
-    return (
-      <div className="max-w-[960px] mx-auto p-6">
-        <div className="flex flex-col items-center justify-center py-20 gap-4">
-          <span className="animate-spin text-mc-accent">{Icons.refresh({ size: 28 })}</span>
-          <p className="text-sm text-mc-text-1 font-mono text-center">
-            Claude is analyzing your project...
-          </p>
-          <p className="text-[10px] text-mc-text-3 font-mono text-center max-w-xs">
-            Reading source code, CLAUDE.md, ROADMAP.md, and git history
-            to build a product-level feature map.
-          </p>
         </div>
       </div>
     );
@@ -153,7 +183,7 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <span className="text-mc-red">{Icons.alert({ size: 32 })}</span>
           <p className="text-sm text-mc-red font-mono text-center max-w-md">{error}</p>
-          <Button onClick={handleGenerate}>Retry</Button>
+          <Button onClick={() => handleGenerate()}>Retry</Button>
         </div>
       </div>
     );
@@ -215,7 +245,25 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
             <span className="text-[10px] text-mc-text-3 font-mono">
               {new Date(productMap.generated_at).toLocaleDateString()}
             </span>
-            <Button small onClick={handleGenerate} disabled={isScanning}>
+            {productMap.scan_mode && (
+              <span className={`text-[10px] font-mono ${productMap.scan_mode === "cached" ? "text-mc-green" : productMap.scan_mode === "delta" ? "text-mc-cyan" : "text-mc-text-3"}`}>
+                {productMap.scan_mode === "cached" ? "cached" : productMap.scan_mode === "delta" ? "delta" : "full scan"}
+              </span>
+            )}
+            {productMap.commit_hash && (
+              <span className="text-[10px] text-mc-text-3 font-mono" title={productMap.commit_hash}>
+                {productMap.commit_hash.slice(0, 7)}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => handleGenerate(true)}
+              disabled={isScanning}
+              className="text-[10px] font-mono text-mc-text-3 hover:text-mc-accent transition-colors cursor-pointer disabled:opacity-40"
+            >
+              Force full rescan
+            </button>
+            <Button small onClick={() => handleGenerate(false)} disabled={isScanning}>
               {isScanning ? "Analyzing..." : "Regenerate"}
             </Button>
           </div>

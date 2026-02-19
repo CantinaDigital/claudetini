@@ -293,13 +293,13 @@ export default function IntelligenceTab({ onFix }: IntelligenceTabProps) {
     return () => { cancelled = true; };
   }, [projectPath]);
 
-  // Scan handler
-  const handleScan = useCallback(async () => {
+  // Scan handler (smart diff by default)
+  const handleScan = useCallback(async (force = false) => {
     if (!projectPath || !isBackendConnected()) return;
     setIsLoading(true);
     setError(null);
     try {
-      const result = await api.scanIntelligence(projectPath);
+      const result = await api.scanIntelligence(projectPath, force);
       setReport(result);
       setCachedReport(projectPath, result);
     } catch (err) {
@@ -367,7 +367,7 @@ export default function IntelligenceTab({ onFix }: IntelligenceTabProps) {
           <p className="text-sm text-mc-text-2 font-mono text-center">
             No intelligence data. Run a scan to get started.
           </p>
-          <Button primary onClick={handleScan}>Scan Now</Button>
+          <Button primary onClick={() => handleScan()}>Scan Now</Button>
         </div>
       </div>
     );
@@ -380,7 +380,7 @@ export default function IntelligenceTab({ onFix }: IntelligenceTabProps) {
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <span className="text-mc-red">{Icons.alert({ size: 32 })}</span>
           <p className="text-sm text-mc-red font-mono text-center">{error}</p>
-          <Button onClick={handleScan}>Retry</Button>
+          <Button onClick={() => handleScan()}>Retry</Button>
         </div>
       </div>
     );
@@ -497,7 +497,25 @@ export default function IntelligenceTab({ onFix }: IntelligenceTabProps) {
           </span>
           {report.total_files_scanned != null && report.total_files_scanned > 0 && (
             <span className="text-[10px] text-mc-text-3 font-mono">
-              {report.total_files_scanned} files scanned
+              {report.total_files_scanned} files
+            </span>
+          )}
+          {report.scanners_rerun != null && (
+            <span className="text-[10px] text-mc-text-3 font-mono">
+              {report.scanners_rerun.length}/5 scanners ran
+              {report.scanners_rerun.length < 5 && report.scanners_rerun.length > 0 && (
+                <span className="text-mc-green ml-1">
+                  ({5 - report.scanners_rerun.length} cached)
+                </span>
+              )}
+              {report.scanners_rerun.length === 0 && (
+                <span className="text-mc-green ml-1">(all cached)</span>
+              )}
+            </span>
+          )}
+          {report.commit_hash && (
+            <span className="text-[10px] text-mc-text-3 font-mono" title={report.commit_hash}>
+              {report.commit_hash.slice(0, 7)}
             </span>
           )}
           <div className="flex-1" />
@@ -506,7 +524,15 @@ export default function IntelligenceTab({ onFix }: IntelligenceTabProps) {
               Get an A
             </Button>
           )}
-          <Button small primary onClick={handleScan} disabled={isLoading}>
+          <button
+            type="button"
+            onClick={() => handleScan(true)}
+            disabled={isLoading}
+            className="text-[10px] font-mono text-mc-text-3 hover:text-mc-accent transition-colors cursor-pointer disabled:opacity-40"
+          >
+            Force full rescan
+          </button>
+          <Button small primary onClick={() => handleScan(false)} disabled={isLoading}>
             {isLoading ? (
               <span className="flex items-center gap-1">
                 <span className="animate-spin inline-block">{Icons.refresh({ size: 10 })}</span>
