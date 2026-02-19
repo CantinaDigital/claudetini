@@ -947,6 +947,12 @@ export const api = {
       { timeoutMs: 5000 }
     ),
 
+  openFile: (projectPath: string, filePath: string, lineNumber?: number) =>
+    fetchApi<{ opened: boolean; editor: string }>("/api/intelligence/open-file", {
+      method: "POST",
+      body: JSON.stringify({ project_path: projectPath, file_path: filePath, line_number: lineNumber }),
+    }),
+
   scanIntelligenceSingle: (projectPath: string, scannerName: string) =>
     fetchApi<unknown>(
       `/api/intelligence/scan/${encodeURIComponent(scannerName)}`,

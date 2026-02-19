@@ -8,6 +8,8 @@ import asyncio
 import fnmatch
 import json
 import logging
+import os
+import shutil
 import subprocess
 import time
 from datetime import UTC, datetime
@@ -459,7 +461,7 @@ def _compute_score_and_grade(
     """Compute overall_score (0-100) and letter grade.
 
     Weights: hardcoded=0.20, dependencies=0.25, integrations=0.10,
-             freshness=0.25, features=0.20.
+             freshness=0.20, features=0.25.
     """
     # Hardcoded score
     hc_critical = sum(1 for f in hardcoded.findings if f.severity == "critical")
@@ -492,8 +494,8 @@ def _compute_score_and_grade(
         hardcoded_score * 0.20
         + dependency_score * 0.25
         + integration_score * 0.10
-        + freshness_score * 0.25
-        + feature_score * 0.20
+        + freshness_score * 0.20
+        + feature_score * 0.25
     )
 
     if overall >= 90:
@@ -1219,3 +1221,34 @@ async def scan_individual(scanner_name: str, request: ScanRequest):
     except Exception as exc:
         logger.exception("%s scanner failed for %s", scanner_name, project_path)
         raise HTTPException(status_code=500, detail=f"{scanner_name} scanner failed: {exc}")
+
+
+class OpenFileRequest(BaseModel):
+    """Request to open a file in the user's editor."""
+    file_path: str
+    line_number: int | None = None
+    project_path: str
+
+
+@router.post("/open-file")
+async def open_file_in_editor(request: OpenFileRequest):
+    """Open a file in the user's editor."""
+    file_path = request.file_path
+    if not Path(file_path).is_absolute():
+        file_path = str(Path(request.project_path).resolve() / file_path)
+    if not Path(file_path).exists():
+        raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
+
+    code_bin = shutil.which("code")
+    if code_bin:
+        target = f"{file_path}:{request.line_number}" if request.line_number else file_path
+        subprocess.Popen([code_bin, "--goto", target])
+        return {"opened": True, "editor": "vscode"}
+
+    editor = os.environ.get("VISUAL") or os.environ.get("EDITOR")
+    if editor:
+        subprocess.Popen([editor, file_path])
+        return {"opened": True, "editor": editor}
+
+    subprocess.Popen(["open", file_path])  # macOS fallback
+    return {"opened": True, "editor": "system"}

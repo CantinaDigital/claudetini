@@ -635,7 +635,7 @@ Only modify the minimum files needed. Run the ${gateName.toLowerCase()} gate aft
       </div>
       <div className={activeTab === 3 ? 'block' : 'hidden'}>
         <TabErrorBoundary tabName="Intelligence">
-          <IntelligenceTab onFix={handleFix} />
+          <IntelligenceTab onFix={handleFix} onNavigateToProductMap={() => setActiveTab(4)} />
         </TabErrorBoundary>
       </div>
       <div className={activeTab === 4 ? 'block' : 'hidden'}>
