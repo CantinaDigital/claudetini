@@ -1,5 +1,6 @@
 import type {
   Project,
+  DiscoveredProject,
   TimelineResponse,
   Roadmap,
   GitStatus,
@@ -37,8 +38,19 @@ import type {
 } from "../types";
 
 // Backend API configuration
-const API_PORT = 9876;
-export const API_BASE_URL = `http://127.0.0.1:${API_PORT}`;
+let API_PORT = 9876;
+let API_BASE_URL = `http://127.0.0.1:${API_PORT}`;
+
+/**
+ * Update the sidecar port at runtime.
+ * Called when the Rust backend emits the "sidecar-ready" event with a dynamic port.
+ */
+export function setApiPort(port: number): void {
+  API_PORT = port;
+  API_BASE_URL = `http://127.0.0.1:${port}`;
+}
+
+export { API_BASE_URL };
 
 let backendConnected = false;
 
@@ -262,6 +274,9 @@ export const api = {
 
   getProjectHealth: (id: string) =>
     fetchApi<HealthReport>(`/api/project/health/${encodeURIComponent(id)}`),
+
+  discoverProjects: () =>
+    fetchApi<DiscoveredProject[]>("/api/project/discover"),
 
   // =====================================
   // Readiness & Bootstrap

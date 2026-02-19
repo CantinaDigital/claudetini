@@ -220,7 +220,7 @@ function ScoreRing({ score, size = 72 }: { score: number; size?: number }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-extrabold font-mono leading-none" style={{ fontSize: 24, color }}>{grade}</span>
+        <span className="font-extrabold font-mono leading-none text-2xl" style={{ color }}>{grade}</span>
       </div>
     </div>
   );
@@ -231,8 +231,8 @@ function ScoreRing({ score, size = 72 }: { score: number; size?: number }) {
 function Tag({ children, color: c = t.text3, bg: b = t.surface2, className = "" }: { children: React.ReactNode; color?: string; bg?: string; className?: string }) {
   return (
     <span
-      className={`inline-block whitespace-nowrap font-mono font-semibold uppercase rounded ${className}`}
-      style={{ fontSize: 10, letterSpacing: "0.04em", padding: "2px 7px", background: b, color: c }}
+      className={`inline-block whitespace-nowrap font-mono font-semibold uppercase rounded text-[10px] tracking-wide px-[7px] py-[2px] ${className}`}
+      style={{ background: b, color: c }}
     >
       {children}
     </span>
@@ -360,7 +360,7 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
   // Loading skeleton
   if (isLoading && !report) {
     return (
-      <div className="max-w-[1120px] mx-auto px-6 py-5">
+      <div className="mx-auto px-6 py-5">
         <div className="flex flex-col gap-4">
           {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
@@ -371,7 +371,7 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
   // Empty state
   if (!report && !isLoading && !error) {
     return (
-      <div className="max-w-[1120px] mx-auto px-6 py-5">
+      <div className="mx-auto px-6 py-5">
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <span className="text-mc-text-3">{Icons.search({ size: 32 })}</span>
           <p className="text-sm text-mc-text-2 font-mono text-center">
@@ -385,7 +385,7 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
 
   if (error && !report) {
     return (
-      <div className="max-w-[1120px] mx-auto px-6 py-5">
+      <div className="mx-auto px-6 py-5">
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <span className="text-mc-red">{Icons.alert({ size: 32 })}</span>
           <p className="text-sm text-mc-red font-mono text-center">{error}</p>
@@ -418,18 +418,18 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
   const totalHardcodedFindings = report.hardcoded.findings.length;
 
   return (
-    <div className="max-w-[1120px] mx-auto px-6 py-5 flex flex-col gap-5">
+    <div className="mx-auto px-6 py-5 flex flex-col gap-5">
 
       {/* ════════ TIER 1: EXECUTIVE SUMMARY ════════ */}
       <div className="flex gap-3.5">
         {/* Grade Hero */}
         <div
-          className="flex-shrink-0 rounded-xl flex flex-col items-center justify-center gap-0.5"
-          style={{ width: 130, padding: 16, background: `linear-gradient(135deg, ${t.surface1}, ${t.surface0})`, border: `1px solid ${t.border0}` }}
+          className="flex-shrink-0 rounded-xl flex flex-col items-center justify-center gap-0.5 w-[130px] p-4 border border-mc-border-0"
+          style={{ background: `linear-gradient(135deg, ${t.surface1}, ${t.surface0})` }}
         >
           <ScoreRing score={report.overall_score} size={72} />
-          <span className="font-extrabold font-mono text-mc-text-0" style={{ fontSize: 20 }}>{report.overall_score}</span>
-          <span className="font-mono text-mc-text-3 uppercase" style={{ fontSize: 8.5, letterSpacing: "0.12em" }}>Intelligence</span>
+          <span className="font-extrabold font-mono text-mc-text-0 text-xl">{report.overall_score}</span>
+          <span className="font-mono text-mc-text-3 uppercase text-[8.5px] tracking-[0.12em]">Intelligence</span>
         </div>
 
         {/* Dimension Cards */}
@@ -439,21 +439,21 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
             if (!cfg) return null;
             const sc = scoreColor(dim.score);
             return (
-              <div key={dim.category} className="relative overflow-hidden rounded-[10px] p-3 flex flex-col gap-1.5" style={{ background: t.surface1, border: `1px solid ${t.border0}` }}>
+              <div key={dim.category} className="relative overflow-hidden rounded-[10px] p-3 flex flex-col gap-1.5 bg-mc-surface-1 border border-mc-border-0">
                 <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: sc }} />
                 <div className="flex items-center gap-1.5">
-                  <span style={{ fontSize: 13 }}>{cfg.emoji}</span>
-                  <span className="font-bold text-mc-text-1" style={{ fontSize: 10.5, lineHeight: 1.2 }}>{cfg.label}</span>
+                  <span className="text-[13px]">{cfg.emoji}</span>
+                  <span className="font-bold text-mc-text-1 text-[10.5px] leading-tight">{cfg.label}</span>
                 </div>
                 <div className="flex items-baseline gap-1.5">
-                  <span className="font-extrabold font-mono leading-none" style={{ fontSize: 22, color: sc }}>{dim.score}</span>
+                  <span className="font-extrabold font-mono leading-none text-[22px]" style={{ color: sc }}>{dim.score}</span>
                   {dim.finding_count > 0
-                    ? <span className="font-mono" style={{ fontSize: 10, color: sc }}>{dim.finding_count}</span>
-                    : <span className="font-mono" style={{ fontSize: 10, color: t.green }}>{"\u2713"}</span>
+                    ? <span className="font-mono text-[10px]" style={{ color: sc }}>{dim.finding_count}</span>
+                    : <span className="font-mono text-[10px] text-mc-green">{"\u2713"}</span>
                   }
                 </div>
                 {dim.top_finding && (
-                  <div className="text-mc-text-3" style={{ fontSize: 9.5, lineHeight: 1.3, minHeight: 24 }}>{dim.top_finding}</div>
+                  <div className="text-mc-text-3 text-[9.5px] leading-snug min-h-[24px]">{dim.top_finding}</div>
                 )}
                 <div className="flex items-center gap-1.5 mt-auto">
                   <div className="flex-1 h-[3px] rounded-sm bg-mc-surface-3 overflow-hidden">
@@ -463,8 +463,7 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
                     <button
                       type="button"
                       onClick={() => handleDimFix(dim.category)}
-                      className="flex-shrink-0 whitespace-nowrap font-mono font-semibold cursor-pointer"
-                      style={{ padding: "2px 7px", borderRadius: 4, background: t.accentMuted, border: `1px solid ${t.accentBorder}`, color: t.accent, fontSize: 8.5 }}
+                      className="flex-shrink-0 whitespace-nowrap font-mono font-semibold cursor-pointer px-[7px] py-[2px] rounded bg-mc-accent-muted border border-mc-accent-border text-mc-accent text-[8.5px]"
                     >
                       Fix
                     </button>
@@ -476,15 +475,14 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
         </div>
 
         {/* Scan Meta Column */}
-        <div className="flex flex-col items-end justify-between flex-shrink-0 font-mono text-mc-text-3" style={{ width: 100, fontSize: 10 }}>
+        <div className="flex flex-col items-end justify-between flex-shrink-0 font-mono text-mc-text-3 w-[100px] text-[10px]">
           <span>{formatRelativeTime(report.generated_at)}</span>
           <div className="flex flex-col gap-1.5 w-full">
             <button
               type="button"
               onClick={() => handleScan(false)}
               disabled={isLoading}
-              className="w-full font-sans font-semibold text-white rounded-md cursor-pointer disabled:opacity-50"
-              style={{ padding: "6px 14px", fontSize: 11, background: t.green, border: "none", textAlign: "center" }}
+              className="w-full font-sans font-semibold text-white rounded-md cursor-pointer disabled:opacity-50 px-3.5 py-1.5 text-[11px] bg-mc-green border-none text-center"
             >
               {isLoading ? "Scanning..." : "Scan"}
             </button>
@@ -492,8 +490,7 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
               <button
                 type="button"
                 onClick={handleGetAnA}
-                className="w-full font-sans font-semibold text-white rounded-md cursor-pointer whitespace-nowrap"
-                style={{ padding: "6px 14px", fontSize: 11, background: t.accent, border: "none", textAlign: "center" }}
+                className="w-full font-sans font-semibold text-white rounded-md cursor-pointer whitespace-nowrap px-3.5 py-1.5 text-[11px] bg-mc-accent border-none text-center"
               >
                 {"\u26A1"} Get an A
               </button>
@@ -504,23 +501,22 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
       </div>
 
       {/* ════════ TIER 2: THE STORY ════════ */}
-      <div className="grid gap-3.5" style={{ gridTemplateColumns: "3fr 2fr" }}>
+      <div className="grid gap-3.5 grid-cols-[3fr_2fr]">
 
         {/* Priority Issues */}
-        <div className="rounded-[10px] overflow-hidden" style={{ background: t.surface1, border: `1px solid ${t.border0}` }}>
-          <div className="flex items-center px-4 py-2.5" style={{ borderBottom: `1px solid ${t.border0}` }}>
-            <span className="font-mono font-bold text-mc-text-3 uppercase" style={{ fontSize: 10, letterSpacing: "0.06em" }}>Priority Issues</span>
+        <div className="rounded-[10px] overflow-hidden bg-mc-surface-1 border border-mc-border-0">
+          <div className="flex items-center px-4 py-2.5 border-b border-mc-border-0">
+            <span className="font-mono font-bold text-mc-text-3 uppercase text-[10px] tracking-wide">Priority Issues</span>
             <div className="flex-1" />
-            {critCount > 0 && <span className="font-mono" style={{ fontSize: 10, color: t.red }}>{critCount} crit</span>}
-            {critCount > 0 && warnCount > 0 && <span className="mx-2 bg-mc-border-1" style={{ width: 1, height: 10 }} />}
-            {warnCount > 0 && <span className="font-mono" style={{ fontSize: 10, color: t.amber }}>{warnCount} warn</span>}
-            {(critCount > 0 || warnCount > 0) && onFix && <span className="mx-2 bg-mc-border-1" style={{ width: 1, height: 10 }} />}
+            {critCount > 0 && <span className="font-mono text-[10px] text-mc-red">{critCount} crit</span>}
+            {critCount > 0 && warnCount > 0 && <span className="mx-2 bg-mc-border-1 w-px h-2.5" />}
+            {warnCount > 0 && <span className="font-mono text-[10px] text-mc-amber">{warnCount} warn</span>}
+            {(critCount > 0 || warnCount > 0) && onFix && <span className="mx-2 bg-mc-border-1 w-px h-2.5" />}
             {onFix && report.top_issues.length > 0 && (
               <button
                 type="button"
                 onClick={handleFixAll}
-                className="font-mono font-semibold cursor-pointer"
-                style={{ padding: "3px 10px", borderRadius: 5, background: t.accentMuted, border: `1px solid ${t.accentBorder}`, color: t.accent, fontSize: 9 }}
+                className="font-mono font-semibold cursor-pointer px-2.5 py-[3px] rounded-[5px] bg-mc-accent-muted border border-mc-accent-border text-mc-accent text-[9px]"
               >
                 Fix All
               </button>
@@ -536,21 +532,19 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
                 return (
                   <div
                     key={idx}
-                    className="flex items-center gap-2 px-4 cursor-pointer hover:opacity-90"
-                    style={{ padding: "8px 16px", borderTop: idx > 0 ? `1px solid ${t.border0}` : "none", background: isCrit ? t.redMuted : "transparent" }}
+                    className={`flex items-center gap-2 px-4 py-2 cursor-pointer hover:opacity-90 ${idx > 0 ? "border-t border-mc-border-0" : ""} ${isCrit ? "bg-mc-red-muted" : ""}`}
                     onClick={() => { if (issue.file_path) handleOpenFile(issue.file_path, issue.line_number ?? undefined); }}
                   >
                     <Tag color={SEV_COLOR[sevKey] || t.text3} bg={SEV_BG[sevKey] || "transparent"} className="flex-shrink-0" >
                       {issue.severity === "critical" ? "CRIT" : issue.severity === "high" ? "HIGH" : issue.severity === "warning" ? "WARN" : "INFO"}
                     </Tag>
                     <span
-                      className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap"
-                      style={{ fontSize: 11, color: isCrit ? t.text0 : t.text1, fontWeight: isCrit ? 600 : 400 }}
+                      className={`flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[11px] ${isCrit ? "text-mc-text-0 font-semibold" : "text-mc-text-1 font-normal"}`}
                     >
                       {truncate(issue.issue, 80)}
                     </span>
                     {issue.file_path && (
-                      <span className="flex-shrink-0 font-mono text-mc-text-3 overflow-hidden text-ellipsis whitespace-nowrap" style={{ fontSize: 9, maxWidth: 130 }}>
+                      <span className="flex-shrink-0 font-mono text-mc-text-3 overflow-hidden text-ellipsis whitespace-nowrap text-[9px] max-w-[130px]">
                         {issue.file_path}{issue.line_number ? `:${issue.line_number}` : ""}
                       </span>
                     )}
@@ -561,8 +555,7 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); handleIssueFix(issue); }}
-                        className="flex-shrink-0 font-mono font-semibold cursor-pointer"
-                        style={{ padding: "2px 7px", borderRadius: 4, background: t.accentMuted, border: `1px solid ${t.accentBorder}`, color: t.accent, fontSize: 8 }}
+                        className="flex-shrink-0 font-mono font-semibold cursor-pointer px-[7px] py-[2px] rounded bg-mc-accent-muted border border-mc-accent-border text-mc-accent text-[8px]"
                       >
                         Fix
                       </button>
@@ -575,11 +568,11 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
         </div>
 
         {/* Debt Heatmap */}
-        <div className="rounded-[10px] overflow-hidden" style={{ background: t.surface1, border: `1px solid ${t.border0}` }}>
-          <div className="flex items-center px-4 py-2.5" style={{ borderBottom: `1px solid ${t.border0}` }}>
-            <span className="font-mono font-bold text-mc-text-3 uppercase" style={{ fontSize: 10, letterSpacing: "0.06em" }}>Debt Heatmap</span>
+        <div className="rounded-[10px] overflow-hidden bg-mc-surface-1 border border-mc-border-0">
+          <div className="flex items-center px-4 py-2.5 border-b border-mc-border-0">
+            <span className="font-mono font-bold text-mc-text-3 uppercase text-[10px] tracking-wide">Debt Heatmap</span>
             <div className="flex-1" />
-            <span className="font-mono text-mc-text-3" style={{ fontSize: 10 }}>top {topHeatFiles.length}</span>
+            <span className="font-mono text-mc-text-3 text-[10px]">top {topHeatFiles.length}</span>
           </div>
           {/* Treemap blocks */}
           {heatEntries.length > 0 && (
@@ -593,8 +586,8 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
                 return (
                   <div
                     key={entry.filePath}
-                    className="rounded flex items-center justify-center font-mono font-semibold overflow-hidden cursor-pointer"
-                    style={{ width: w, height: h, background: `${hc}15`, border: `1px solid ${hc}30`, fontSize: 7.5, color: hc, padding: "0 2px" }}
+                    className="rounded flex items-center justify-center font-mono font-semibold overflow-hidden cursor-pointer text-[7.5px] px-[2px]"
+                    style={{ width: w, height: h, background: `${hc}15`, border: `1px solid ${hc}30`, color: hc }}
                     title={`${entry.filePath}\n${entry.issueCount} issues`}
                     onClick={() => handleOpenFile(entry.filePath)}
                   >
@@ -614,18 +607,18 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
                   className="flex items-center gap-2 py-[3px] px-1 cursor-pointer hover:opacity-80"
                   onClick={() => handleOpenFile(entry.filePath)}
                 >
-                  <div className="flex-shrink-0 h-1 rounded-sm bg-mc-surface-3 overflow-hidden" style={{ width: 36 }}>
+                  <div className="flex-shrink-0 h-1 rounded-sm bg-mc-surface-3 overflow-hidden w-9">
                     <div className="h-full rounded-sm" style={{ width: `${(entry.heat / maxHeat) * 100}%`, background: hc }} />
                   </div>
-                  <span className="font-mono text-mc-text-2 flex-1 overflow-hidden text-ellipsis whitespace-nowrap" style={{ fontSize: 10 }}>
+                  <span className="font-mono text-mc-text-2 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[10px]">
                     {entry.filePath}
                   </span>
-                  <span className="font-mono font-semibold" style={{ fontSize: 10, color: hc, width: 14, textAlign: "right" }}>
+                  <span className="font-mono font-semibold text-[10px] w-3.5 text-right" style={{ color: hc }}>
                     {entry.issueCount}
                   </span>
                   <div className="flex gap-0.5">
                     {entry.dims.map((dm) => (
-                      <span key={dm} className="rounded-full" style={{ width: 4, height: 4, background: DIM_CONFIG[dm]?.color || t.text3 }} />
+                      <span key={dm} className="rounded-full w-1 h-1" style={{ background: DIM_CONFIG[dm]?.color || t.text3 }} />
                     ))}
                   </div>
                 </div>
@@ -639,9 +632,9 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
       <div className="grid grid-cols-2 gap-3.5">
 
         {/* Hardcoded by Type */}
-        <div className="rounded-[10px] overflow-hidden" style={{ background: t.surface1, border: `1px solid ${t.border0}` }}>
-          <div className="flex items-center px-4 py-2.5" style={{ borderBottom: `1px solid ${t.border0}` }}>
-            <span className="font-mono font-bold text-mc-text-3 uppercase" style={{ fontSize: 10, letterSpacing: "0.06em" }}>
+        <div className="rounded-[10px] overflow-hidden bg-mc-surface-1 border border-mc-border-0">
+          <div className="flex items-center px-4 py-2.5 border-b border-mc-border-0">
+            <span className="font-mono font-bold text-mc-text-3 uppercase text-[10px] tracking-wide">
               {DIM_CONFIG.hardcoded.emoji} Hardcoded — by type
             </span>
             <div className="flex-1" />
@@ -658,13 +651,13 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
                 const c = SEV_COLOR[group.sev] || t.text3;
                 const bg = SEV_BG[group.sev] || "transparent";
                 return (
-                  <div key={group.type} className="flex items-center gap-2" style={{ padding: "5px 0", borderTop: i > 0 ? `1px solid ${t.border0}` : "none" }}>
+                  <div key={group.type} className={`flex items-center gap-2 py-[5px] ${i > 0 ? "border-t border-mc-border-0" : ""}`}>
                     <Tag color={c} bg={bg} className="flex-shrink-0" >{group.count}</Tag>
-                    <span className="font-mono text-mc-text-1 flex-shrink-0" style={{ fontSize: 10.5, width: 100 }}>{group.type}</span>
+                    <span className="font-mono text-mc-text-1 flex-shrink-0 text-[10.5px] w-[100px]">{group.type}</span>
                     <div className="flex-1 h-1.5 rounded-sm bg-mc-surface-3 overflow-hidden">
                       <div className="h-full rounded-sm" style={{ width: `${pct}%`, background: `${c}60` }} />
                     </div>
-                    <span className="font-mono text-mc-text-3 overflow-hidden text-ellipsis whitespace-nowrap" style={{ fontSize: 9, maxWidth: 130 }}>
+                    <span className="font-mono text-mc-text-3 overflow-hidden text-ellipsis whitespace-nowrap text-[9px] max-w-[130px]">
                       {truncate(group.example, 30)}
                     </span>
                   </div>
@@ -675,13 +668,13 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
         </div>
 
         {/* Integrations */}
-        <div className="rounded-[10px] overflow-hidden" style={{ background: t.surface1, border: `1px solid ${t.border0}` }}>
-          <div className="flex items-center px-4 py-2.5" style={{ borderBottom: `1px solid ${t.border0}` }}>
-            <span className="font-mono font-bold text-mc-text-3 uppercase" style={{ fontSize: 10, letterSpacing: "0.06em" }}>
+        <div className="rounded-[10px] overflow-hidden bg-mc-surface-1 border border-mc-border-0">
+          <div className="flex items-center px-4 py-2.5 border-b border-mc-border-0">
+            <span className="font-mono font-bold text-mc-text-3 uppercase text-[10px] tracking-wide">
               {DIM_CONFIG.integration.emoji} Integrations
             </span>
             <div className="flex-1" />
-            <span className="font-mono text-mc-text-3" style={{ fontSize: 10 }}>{report.integrations.services_detected.length} services</span>
+            <span className="font-mono text-mc-text-3 text-[10px]">{report.integrations.services_detected.length} services</span>
           </div>
           <div className="p-3">
             {report.integrations.services_detected.length === 0 ? (
@@ -694,16 +687,15 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
                   return (
                     <div
                       key={svc.service_name}
-                      className="rounded-md px-2.5 py-2 cursor-pointer hover:opacity-80"
-                      style={{ background: t.surface2, border: `1px solid ${t.border0}` }}
+                      className="rounded-md px-2.5 py-2 cursor-pointer hover:opacity-80 bg-mc-surface-2 border border-mc-border-0"
                       onClick={() => {
                         const pts = report.integrations.integrations.filter(i => i.service_name === svc.service_name);
                         if (pts.length > 0) handleOpenFile(pts[0].file_path, pts[0].line_number);
                       }}
                     >
                       <div className="flex items-center gap-1.5 mb-1">
-                        <span className="font-bold text-mc-text-0" style={{ fontSize: 12 }}>{svc.service_name}</span>
-                        <span className="font-mono text-mc-text-3" style={{ fontSize: 10 }}>{svc.count}</span>
+                        <span className="font-bold text-mc-text-0 text-xs">{svc.service_name}</span>
+                        <span className="font-mono text-mc-text-3 text-[10px]">{svc.count}</span>
                       </div>
                       <Tag color={tc} bg={`${tc}18`}>{tp}</Tag>
                     </div>
@@ -721,8 +713,8 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
                 </div>
                 <div className="flex gap-3 mt-1">
                   {integrationTypeTotals.map(({ label, count, color: c }) => (
-                    <span key={label} className="flex items-center gap-1 font-mono text-mc-text-3" style={{ fontSize: 9 }}>
-                      <span className="rounded-full" style={{ width: 5, height: 5, background: c }} />
+                    <span key={label} className="flex items-center gap-1 font-mono text-mc-text-3 text-[9px]">
+                      <span className="rounded-full w-[5px] h-[5px]" style={{ background: c }} />
                       {label} {count}
                     </span>
                   ))}
@@ -733,9 +725,9 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
         </div>
 
         {/* Code Freshness */}
-        <div className="rounded-[10px] overflow-hidden" style={{ background: t.surface1, border: `1px solid ${t.border0}` }}>
-          <div className="flex items-center px-4 py-2.5" style={{ borderBottom: `1px solid ${t.border0}` }}>
-            <span className="font-mono font-bold text-mc-text-3 uppercase" style={{ fontSize: 10, letterSpacing: "0.06em" }}>
+        <div className="rounded-[10px] overflow-hidden bg-mc-surface-1 border border-mc-border-0">
+          <div className="flex items-center px-4 py-2.5 border-b border-mc-border-0">
+            <span className="font-mono font-bold text-mc-text-3 uppercase text-[10px] tracking-wide">
               {DIM_CONFIG.freshness.emoji} Code Freshness
             </span>
             <div className="flex-1" />
@@ -749,9 +741,9 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
                 { v: report.freshness.abandoned_files.length, l: "Abandoned", c: report.freshness.abandoned_files.length > 0 ? t.red : t.green },
                 { v: `${medianAge}d`, l: "Median", c: t.text0 },
               ].map((s, i) => (
-                <div key={i} className="flex-1 text-center" style={{ borderRight: i < 3 ? `1px solid ${t.border0}` : "none" }}>
-                  <div className="font-extrabold font-mono" style={{ fontSize: 18, color: s.c }}>{s.v}</div>
-                  <div className="font-mono text-mc-text-3 uppercase mt-0.5" style={{ fontSize: 8.5 }}>{s.l}</div>
+                <div key={i} className={`flex-1 text-center ${i < 3 ? "border-r border-mc-border-0" : ""}`}>
+                  <div className="font-extrabold font-mono text-lg" style={{ color: s.c }}>{s.v}</div>
+                  <div className="font-mono text-mc-text-3 uppercase mt-0.5 text-[8.5px]">{s.l}</div>
                 </div>
               ))}
             </div>
@@ -777,8 +769,8 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
                 { label: "Aging", count: age_distribution.aging, color: t.amber },
                 { label: "Stale", count: age_distribution.stale, color: t.red },
               ].map((seg) => (
-                <span key={seg.label} className="flex items-center gap-1 font-mono text-mc-text-3" style={{ fontSize: 9 }}>
-                  <span className="rounded-full" style={{ width: 5, height: 5, background: seg.color }} />
+                <span key={seg.label} className="flex items-center gap-1 font-mono text-mc-text-3 text-[9px]">
+                  <span className="rounded-full w-[5px] h-[5px]" style={{ background: seg.color }} />
                   {seg.label} {seg.count}
                 </span>
               ))}
@@ -787,9 +779,9 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
         </div>
 
         {/* Feature Map */}
-        <div className="rounded-[10px] overflow-hidden" style={{ background: t.surface1, border: `1px solid ${t.border0}` }}>
-          <div className="flex items-center px-4 py-2.5" style={{ borderBottom: `1px solid ${t.border0}` }}>
-            <span className="font-mono font-bold text-mc-text-3 uppercase" style={{ fontSize: 10, letterSpacing: "0.06em" }}>
+        <div className="rounded-[10px] overflow-hidden bg-mc-surface-1 border border-mc-border-0">
+          <div className="flex items-center px-4 py-2.5 border-b border-mc-border-0">
+            <span className="font-mono font-bold text-mc-text-3 uppercase text-[10px] tracking-wide">
               {DIM_CONFIG.feature.emoji} Feature Map
             </span>
             <div className="flex-1" />
@@ -810,26 +802,26 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
                     .map(([cat, count]) => {
                       const pct = Math.round((count / Math.max(report.features.total_features, 1)) * 100);
                       return (
-                        <div key={cat} className="flex items-center gap-2" style={{ padding: "3px 0" }}>
-                          <span className="font-mono text-mc-text-2 flex-shrink-0" style={{ fontSize: 10, width: 80, textAlign: "right" }}>{cat}</span>
+                        <div key={cat} className="flex items-center gap-2 py-[3px]">
+                          <span className="font-mono text-mc-text-2 flex-shrink-0 text-[10px] w-20 text-right">{cat}</span>
                           <div className="flex-1 h-1.5 rounded-sm bg-mc-surface-3 overflow-hidden">
                             <div className="h-full rounded-sm" style={{ width: `${pct}%`, background: `${t.accent}60` }} />
                           </div>
-                          <span className="font-mono font-semibold text-mc-text-1 flex-shrink-0" style={{ fontSize: 10, width: 20 }}>{count}</span>
+                          <span className="font-mono font-semibold text-mc-text-1 flex-shrink-0 text-[10px] w-5">{count}</span>
                         </div>
                       );
                     })}
                 </div>
                 {/* Insights row */}
-                <div className="flex items-center gap-4 mt-3 pt-3" style={{ borderTop: `1px solid ${t.border0}` }}>
+                <div className="flex items-center gap-4 mt-3 pt-3 border-t border-mc-border-0">
                   {report.features.untracked_features.length > 0 && (
-                    <span className="flex items-center gap-1.5 font-mono" style={{ fontSize: 10 }}>
-                      <span style={{ color: t.amber }}>{report.features.untracked_features.length}</span>
+                    <span className="flex items-center gap-1.5 font-mono text-[10px]">
+                      <span className="text-mc-amber">{report.features.untracked_features.length}</span>
                       <span className="text-mc-text-3">untracked</span>
                     </span>
                   )}
                   {report.features.most_coupled.length > 0 && (
-                    <span className="flex items-center gap-1.5 font-mono" style={{ fontSize: 10 }}>
+                    <span className="flex items-center gap-1.5 font-mono text-[10px]">
                       <span className="text-mc-text-3">top coupled:</span>
                       <span className="text-mc-text-1">{report.features.most_coupled[0].name}</span>
                       <span className="text-mc-text-3">({report.features.most_coupled[0].import_count})</span>
@@ -841,8 +833,7 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
                   <button
                     type="button"
                     onClick={onNavigateToProductMap}
-                    className="mt-3 w-full font-mono font-semibold cursor-pointer text-center rounded-md"
-                    style={{ padding: "6px 14px", fontSize: 10, background: t.accentMuted, border: `1px solid ${t.accentBorder}`, color: t.accent }}
+                    className="mt-3 w-full font-mono font-semibold cursor-pointer text-center rounded-md px-3.5 py-1.5 text-[10px] bg-mc-accent-muted border border-mc-accent-border text-mc-accent"
                   >
                     View Product Map &rarr;
                   </button>
@@ -853,9 +844,9 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
         </div>
 
         {/* Dependencies — full width */}
-        <div className="col-span-2 rounded-[10px] overflow-hidden" style={{ background: t.surface1, border: `1px solid ${t.border0}` }}>
+        <div className="col-span-2 rounded-[10px] overflow-hidden bg-mc-surface-1 border border-mc-border-0">
           <div className="flex items-center px-4 py-2.5">
-            <span className="font-mono font-bold text-mc-text-3 uppercase" style={{ fontSize: 10, letterSpacing: "0.06em" }}>
+            <span className="font-mono font-bold text-mc-text-3 uppercase text-[10px] tracking-wide">
               {DIM_CONFIG.dependency.emoji} Dependencies
             </span>
             <div className="flex-1" />
@@ -867,27 +858,27 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
             ) : (
               <div className="flex items-center gap-6">
                 <div className="flex items-center gap-2">
-                  <span className="font-extrabold font-mono" style={{ fontSize: 22, color: totalOutdated > 0 ? t.amber : t.green }}>{totalOutdated}</span>
-                  <span className="text-mc-text-3" style={{ fontSize: 11 }}>outdated</span>
+                  <span className={`font-extrabold font-mono text-[22px] ${totalOutdated > 0 ? "text-mc-amber" : "text-mc-green"}`}>{totalOutdated}</span>
+                  <span className="text-mc-text-3 text-[11px]">outdated</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="font-extrabold font-mono" style={{ fontSize: 22, color: totalVulns > 0 ? t.red : t.green }}>{totalVulns}</span>
-                  <span className="text-mc-text-3" style={{ fontSize: 11 }}>vulnerable</span>
+                  <span className={`font-extrabold font-mono text-[22px] ${totalVulns > 0 ? "text-mc-red" : "text-mc-green"}`}>{totalVulns}</span>
+                  <span className="text-mc-text-3 text-[11px]">vulnerable</span>
                 </div>
                 {/* Inline specific packages */}
                 {(totalVulns > 0 || totalOutdated > 0) && (
                   <>
-                    <div className="bg-mc-border-1" style={{ width: 1, height: 20 }} />
+                    <div className="bg-mc-border-1 w-px h-5" />
                     <div className="flex items-center gap-3 flex-wrap flex-1">
                       {report.dependencies.flatMap((eco) => [
                         ...eco.vulnerabilities.map((v) => (
-                          <span key={v.advisory_id} className="text-mc-text-3" style={{ fontSize: 11 }}>
+                          <span key={v.advisory_id} className="text-mc-text-3 text-[11px]">
                             <span className="font-bold text-mc-text-1">{v.package_name}</span> {truncate(v.title, 35)}{" "}
                             <Tag color={SEV_COLOR[v.severity] || t.text3} bg={SEV_BG[v.severity] || t.surface2}>{v.severity}</Tag>
                           </span>
                         )),
                         ...eco.outdated.map((d) => (
-                          <span key={`${eco.ecosystem}-${d.name}`} className="text-mc-text-3" style={{ fontSize: 11 }}>
+                          <span key={`${eco.ecosystem}-${d.name}`} className="text-mc-text-3 text-[11px]">
                             {d.name} {d.current_version} {"\u2192"} {d.latest_version}{" "}
                             <Tag color={d.update_severity === "major" ? t.red : t.amber} bg={d.update_severity === "major" ? t.redMuted : t.amberMuted}>
                               {d.update_severity || "patch"}
@@ -899,7 +890,7 @@ export default function IntelligenceTab({ onFix, onNavigateToProductMap }: Intel
                   </>
                 )}
                 {totalVulns === 0 && totalOutdated === 0 && (
-                  <span className="text-mc-text-3" style={{ fontSize: 11 }}>All dependencies healthy</span>
+                  <span className="text-mc-text-3 text-[11px]">All dependencies healthy</span>
                 )}
               </div>
             )}

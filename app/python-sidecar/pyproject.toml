@@ -15,6 +15,9 @@ dev = [
     "pytest",
     "httpx",
 ]
+bundle = [
+    "pyinstaller>=6.0",
+]
 
 [project.scripts]
-claudetini-sidecar = "src.api.server:main"
+claudetini-sidecar = "sidecar.api.server:main"

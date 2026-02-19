@@ -4,7 +4,7 @@ import { Tag } from "../ui/Tag";
 import { Icons } from "../ui/Icons";
 import { ReadinessRing, scoreColor } from "../scorecard/ReadinessRing";
 import { api, isBackendConnected as checkBackend } from "../../api/backend";
-import type { Project, HealthReport, TimelineEntry } from "../../types";
+import type { Project, DiscoveredProject, HealthReport, TimelineEntry } from "../../types";
 
 interface ProjectPickerViewProps {
   projects: Project[];
@@ -61,6 +61,9 @@ export function ProjectPickerView({
   const [query, setQuery] = useState("");
   const [projectPathInput, setProjectPathInput] = useState("");
   const [pathError, setPathError] = useState<string | null>(null);
+  const [discovered, setDiscovered] = useState<DiscoveredProject[]>([]);
+  const [discovering, setDiscovering] = useState(false);
+  const [discoveryOpen, setDiscoveryOpen] = useState(true);
   const [healthMap, setHealthMap] = useState<Record<string, HealthReport>>(() => {
     // Load cached health scores from localStorage on mount
     try {
@@ -107,6 +110,31 @@ export function ProjectPickerView({
   const handleOpenSelected = () => {
     if (!selectedProject) return;
     onOpenProject(selectedProject);
+  };
+
+  const handleDiscover = async () => {
+    if (!backendConnected || !checkBackend()) return;
+    setDiscovering(true);
+    try {
+      const results = await api.discoverProjects();
+      // 8.5 dedup: filter out paths already registered
+      const registeredPaths = new Set(projects.map((p) => p.path));
+      setDiscovered(results.filter((d) => !registeredPaths.has(d.path)));
+    } catch {
+      setDiscovered([]);
+    } finally {
+      setDiscovering(false);
+    }
+  };
+
+  const handleRegisterDiscovered = async (path: string) => {
+    try {
+      await onRegisterProject(path);
+      // Remove from discovered list only on success
+      setDiscovered((prev) => prev.filter((d) => d.path !== path));
+    } catch {
+      // Registration failed — keep the project in discovered list so user can retry
+    }
   };
 
   // Keyboard navigation
@@ -317,6 +345,77 @@ export function ProjectPickerView({
                 </div>
               );
             })}
+        </div>
+
+        {/* Auto-discover section */}
+        <div className="border-t border-mc-border-1 pt-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-semibold font-mono text-mc-text-3 uppercase tracking-[0.06em]">
+              Auto-discovered from Claude Code
+            </span>
+            <Button
+              small
+              onClick={() => void handleDiscover()}
+              disabled={discovering || !backendConnected}
+            >
+              {discovering ? (
+                <>
+                  <span className="inline-block w-3 h-3 border-[1.5px] border-mc-text-3 border-t-mc-accent rounded-full animate-spin" />
+                  Scanning...
+                </>
+              ) : (
+                <>
+                  {Icons.search({ size: 11 })} Discover
+                </>
+              )}
+            </Button>
+          </div>
+
+          {discovered.length > 0 && (
+            <div>
+              <button
+                type="button"
+                onClick={() => setDiscoveryOpen((o) => !o)}
+                className="flex items-center gap-1 text-[10px] text-mc-text-2 mb-1.5 bg-transparent border-none cursor-pointer p-0"
+              >
+                <span className={`transition-transform ${discoveryOpen ? "rotate-90" : ""}`}>
+                  {Icons.play({ size: 8 })}
+                </span>
+                {discovered.length} project{discovered.length !== 1 ? "s" : ""} found
+              </button>
+
+              {discoveryOpen && (
+                <div className="flex flex-col gap-1">
+                  {discovered.map((d) => (
+                    <div
+                      key={d.path}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg bg-mc-surface-1 border border-mc-border-0"
+                    >
+                      <span className="text-mc-text-2">{Icons.folder({ size: 12 })}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-bold text-mc-text-1 truncate">{d.name}</div>
+                        <div className="text-[9px] font-mono text-mc-text-3 truncate">{d.path}</div>
+                      </div>
+                      <Button
+                        small
+                        primary
+                        onClick={() => void handleRegisterDiscovered(d.path)}
+                        disabled={registering}
+                      >
+                        Register
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {!discovering && discovered.length === 0 && (
+            <div className="text-[10px] text-mc-text-3 text-center py-1">
+              No unregistered projects found
+            </div>
+          )}
         </div>
 
         {/* Add Path */}

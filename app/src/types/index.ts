@@ -16,6 +16,12 @@ export interface Project {
   readmeSummary?: string | null;
 }
 
+export interface DiscoveredProject {
+  path: string;
+  name: string;
+  claude_hash: string;
+}
+
 export interface HealthReport {
   items: HealthItem[];
   score: number;

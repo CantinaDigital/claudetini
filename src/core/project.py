@@ -221,6 +221,44 @@ class ProjectRegistry:
             data = json.loads(self.config_path.read_text())
             self.projects = {key: Project.from_dict(proj) for key, proj in data.items()}
 
+    def discover_unregistered(self) -> list[dict]:
+        """Scan ~/.claude/projects/ to find project paths not yet registered."""
+        claude_projects = Path.home() / ".claude" / "projects"
+        if not claude_projects.exists():
+            return []
+
+        registered_paths = {str(p.path.resolve()) for p in self.projects.values()}
+        discovered: dict[str, dict] = {}  # path -> info
+
+        for project_dir in claude_projects.iterdir():
+            if not project_dir.is_dir():
+                continue
+            # Read JSONL files for cwd/workingDirectory
+            for jsonl_file in project_dir.glob("*.jsonl"):
+                try:
+                    with open(jsonl_file) as f:
+                        for i, line in enumerate(f):
+                            if i > 50:  # Only check first 50 lines
+                                break
+                            try:
+                                entry = json.loads(line)
+                                cwd = entry.get("cwd") or entry.get("workingDirectory", "")
+                                if cwd:
+                                    resolved = str(Path(cwd).resolve())
+                                    if resolved not in registered_paths and resolved not in discovered:
+                                        if Path(resolved).exists():
+                                            discovered[resolved] = {
+                                                "path": resolved,
+                                                "name": Path(resolved).name,
+                                                "claude_hash": project_dir.name,
+                                            }
+                            except json.JSONDecodeError:
+                                continue
+                except OSError:
+                    continue
+
+        return list(discovered.values())
+
     @classmethod
     def load_or_create(cls) -> "ProjectRegistry":
         """Load existing registry or create a new one."""

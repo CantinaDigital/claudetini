@@ -429,7 +429,7 @@ export function SettingsTab({ projectPath, isActive = true, backendConnected, on
                   background: `linear-gradient(90deg, ${t.accent}, ${t.accentDark})`,
                 }}
               />
-              <div className="absolute top-[-2px] w-px h-2.5 bg-mc-text-3 opacity-40" style={{ left: "80%" }} />
+              <div className="absolute top-[-2px] left-[80%] w-px h-2.5 bg-mc-text-3 opacity-40" />
             </div>
             <span className="text-[11px] font-mono text-mc-text-3">{budgetPct}%</span>
           </div>

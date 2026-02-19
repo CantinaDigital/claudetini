@@ -15,18 +15,30 @@ function readinessColor(r: number): string {
   return t.red;
 }
 
-function statusColor(status: string): string {
-  if (status === "active") return t.green;
-  if (status === "planned") return t.cyan;
-  if (status === "deprecated") return t.text3;
-  return t.text2;
+function readinessTextClass(r: number): string {
+  if (r >= 80) return "text-mc-green";
+  if (r >= 50) return "text-mc-amber";
+  return "text-mc-red";
 }
 
-const IMPACT_COLOR: Record<string, string> = {
-  high: t.red,
-  medium: t.amber,
-  low: t.text3,
-};
+function readinessBgClass(r: number): string {
+  if (r >= 80) return "bg-mc-green";
+  if (r >= 50) return "bg-mc-amber";
+  return "bg-mc-red";
+}
+
+function statusBadgeClasses(status: string): string {
+  if (status === "active") return "text-mc-green bg-mc-green-muted";
+  if (status === "planned") return "text-mc-cyan bg-mc-cyan-muted";
+  if (status === "deprecated") return "text-mc-text-3 bg-mc-surface-2";
+  return "text-mc-text-2 bg-mc-surface-2";
+}
+
+function impactBadgeClasses(impact: string): string {
+  if (impact === "high") return "text-mc-red bg-mc-red-muted";
+  if (impact === "medium") return "text-mc-amber bg-mc-amber-muted";
+  return "text-mc-text-3 bg-mc-surface-2";
+}
 
 function parseDaysAgo(lastTouched: string): number {
   if (!lastTouched) return 30;
@@ -201,7 +213,7 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
   // Loading state
   if (isLoading && !productMap) {
     return (
-      <div className="max-w-[1120px] mx-auto p-6">
+      <div className="mx-auto p-6">
         <div className="flex flex-col gap-4">
           {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
@@ -212,10 +224,10 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
   // Scanning state
   if (isScanning) {
     return (
-      <div className="max-w-[1120px] mx-auto p-6">
+      <div className="mx-auto p-6">
         <div className="flex flex-col items-center justify-center py-20 gap-5">
-          <div className="relative flex-shrink-0" style={{ width: 56, height: 56 }}>
-            <svg width={56} height={56} viewBox="0 0 56 56" className="animate-spin" style={{ animationDuration: "2s" }}>
+          <div className="relative flex-shrink-0 w-14 h-14">
+            <svg width={56} height={56} viewBox="0 0 56 56" className="animate-spin [animation-duration:2s]">
               <circle cx={28} cy={28} r={22} fill="none" stroke={t.surface3} strokeWidth={4} />
               <circle
                 cx={28} cy={28} r={22} fill="none"
@@ -243,7 +255,7 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
   // Empty state
   if (!productMap && !isLoading && !isScanning && !error) {
     return (
-      <div className="max-w-[1120px] mx-auto p-6">
+      <div className="mx-auto p-6">
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
             <rect x="4" y="8" width="40" height="32" rx="4" stroke={t.text3} strokeWidth="2" />
@@ -270,7 +282,7 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
   // Error state
   if (error && !productMap) {
     return (
-      <div className="max-w-[1120px] mx-auto p-6">
+      <div className="mx-auto p-6">
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <span className="text-mc-red">{Icons.alert({ size: 32 })}</span>
           <p className="text-sm text-mc-red font-mono text-center max-w-md">{error}</p>
@@ -285,12 +297,12 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
   const avgReadiness = productMap.avg_readiness;
 
   return (
-    <div className="max-w-[1120px] mx-auto p-6 flex flex-col gap-5">
+    <div className="mx-auto p-6 flex flex-col gap-5">
       {/* ── Header ─────────────────────────────────────────────── */}
       <div className="bg-mc-surface-1 border border-mc-border-0 rounded-xl p-5 animate-fade-in">
         <div className="flex items-center gap-4">
           {/* Avg readiness ring */}
-          <div className="relative flex-shrink-0" style={{ width: 48, height: 48 }}>
+          <div className="relative flex-shrink-0 w-12 h-12">
             <svg width={48} height={48} viewBox="0 0 48 48" className="-rotate-90">
               <circle cx={24} cy={24} r={20} fill="none" stroke={t.surface3} strokeWidth={4} />
               <circle
@@ -305,8 +317,7 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
               <span
-                className="text-[13px] font-extrabold font-mono"
-                style={{ color: readinessColor(avgReadiness) }}
+                className={`text-[13px] font-extrabold font-mono ${readinessTextClass(avgReadiness)}`}
               >
                 {avgReadiness}%
               </span>
@@ -395,15 +406,14 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
                   key={feat.name}
                   type="button"
                   onClick={() => scrollToFeature(feat.name)}
-                  className="text-left bg-mc-surface-1 rounded-[10px] overflow-hidden relative cursor-pointer hover:bg-mc-surface-2 transition-colors"
-                  style={{ border: `1px solid ${i === 0 ? fc + "30" : "rgba(255,255,255,0.04)"}`, padding: 14 }}
+                  className="text-left bg-mc-surface-1 rounded-[10px] overflow-hidden relative cursor-pointer hover:bg-mc-surface-2 transition-colors p-3.5"
+                  style={{ border: `1px solid ${i === 0 ? fc + "30" : "rgba(255,255,255,0.04)"}` }}
                 >
                   {/* Colored top edge */}
-                  <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: fc }} />
+                  <div className={`absolute top-0 left-0 right-0 h-[2px] ${readinessBgClass(feat.readiness)}`} />
                   {/* Priority number watermark */}
                   <div
-                    className="absolute top-2 right-2.5 font-mono font-black leading-none text-mc-surface-3"
-                    style={{ fontSize: 28 }}
+                    className="absolute top-2 right-2.5 font-mono font-black leading-none text-mc-surface-3 text-[28px]"
                   >
                     #{i + 1}
                   </div>
@@ -411,20 +421,14 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
                   <div className="flex items-center gap-1.5 mb-1.5">
                     <span className="text-[13px] font-bold text-mc-text-0">{feat.name}</span>
                     <div className="flex-1" />
-                    <span className="text-sm font-mono font-extrabold" style={{ color: fc }}>
+                    <span className={`text-sm font-mono font-extrabold ${readinessTextClass(feat.readiness)}`}>
                       {feat.readiness}%
                     </span>
                   </div>
                   {/* Why matters excerpt */}
                   {feat.whyMatters && (
                     <div
-                      className="text-[10.5px] text-mc-text-2 leading-[1.4] mb-2"
-                      style={{
-                        display: "-webkit-box",
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
-                      }}
+                      className="text-[10.5px] text-mc-text-2 leading-[1.4] mb-2 line-clamp-2"
                     >
                       {feat.whyMatters}
                     </div>
@@ -433,11 +437,7 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
                   {topAction && (
                     <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-[5px] bg-mc-surface-2">
                       <span
-                        className="text-[8px] font-semibold font-mono uppercase px-[5px] py-[1px] rounded"
-                        style={{
-                          color: IMPACT_COLOR[topAction.impact] ?? t.text3,
-                          background: (IMPACT_COLOR[topAction.impact] ?? t.text3) + "15",
-                        }}
+                        className={`text-[8px] font-semibold font-mono uppercase px-[5px] py-[1px] rounded ${impactBadgeClasses(topAction.impact)}`}
                       >
                         {topAction.impact}
                       </span>
@@ -452,8 +452,7 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
                   {/* Meta row */}
                   <div className="flex items-center gap-2 mt-2">
                     <span
-                      className="text-[9px] font-mono"
-                      style={{ color: feat.trend > 0 ? t.green : feat.trend < 0 ? t.red : t.text3 }}
+                      className={`text-[9px] font-mono ${feat.trend > 0 ? "text-mc-green" : feat.trend < 0 ? "text-mc-red" : "text-mc-text-3"}`}
                     >
                       {feat.trend > 0 ? "↑" : feat.trend < 0 ? "↓" : "—"}
                       {Math.abs(feat.trend) || ""}
@@ -486,15 +485,13 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
         <div className="flex flex-col gap-1">
           {rankedFeatures.map((feat) => {
             const isExpanded = expandedFeature === feat.name;
-            const fc = readinessColor(feat.readiness);
-            const trendColor = feat.trend > 0 ? t.green : feat.trend < 0 ? t.red : t.text3;
+            const trendClass = feat.trend > 0 ? "text-mc-green" : feat.trend < 0 ? "text-mc-red" : "text-mc-text-3";
 
             return (
               <div
                 key={feat.name}
                 id={`feature-${feat.name}`}
-                className={`rounded-lg overflow-hidden transition-all ${isExpanded ? "bg-mc-surface-1 border-mc-border-2" : "bg-mc-surface-0 border-mc-border-0"}`}
-                style={{ border: `1px solid ${isExpanded ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.04)"}` }}
+                className={`rounded-lg overflow-hidden transition-all border ${isExpanded ? "bg-mc-surface-1 border-mc-border-2" : "bg-mc-surface-0 border-mc-border-0"}`}
               >
                 {/* Collapsed row */}
                 <button
@@ -506,8 +503,7 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
                     #{feat.priorityRank}
                   </span>
                   <span
-                    className="text-[10px] text-mc-text-3 flex-shrink-0 transition-transform"
-                    style={{ transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)" }}
+                    className={`text-[10px] text-mc-text-3 flex-shrink-0 transition-transform ${isExpanded ? "rotate-90" : "rotate-0"}`}
                   >
                     ▸
                   </span>
@@ -515,17 +511,12 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
                     {feat.name}
                   </span>
                   <span
-                    className="text-[8px] font-semibold font-mono uppercase px-[7px] py-[2px] rounded flex-shrink-0"
-                    style={{
-                      color: statusColor(feat.status),
-                      background: statusColor(feat.status) + "15",
-                    }}
+                    className={`text-[8px] font-semibold font-mono uppercase px-[7px] py-[2px] rounded flex-shrink-0 ${statusBadgeClasses(feat.status)}`}
                   >
                     {feat.status}
                   </span>
                   <span
-                    className="text-[10px] font-mono font-bold flex-shrink-0"
-                    style={{ color: trendColor }}
+                    className={`text-[10px] font-mono font-bold flex-shrink-0 ${trendClass}`}
                   >
                     {feat.trend > 0 ? "↑" : feat.trend < 0 ? "↓" : "—"}
                     {Math.abs(feat.trend) || ""}
@@ -542,13 +533,12 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     <div className="w-12 h-1 rounded-full bg-mc-surface-3 overflow-hidden">
                       <div
-                        className="h-full rounded-full transition-all duration-300"
-                        style={{ width: `${feat.readiness}%`, backgroundColor: fc }}
+                        className={`h-full rounded-full transition-all duration-300 ${readinessBgClass(feat.readiness)}`}
+                        style={{ width: `${feat.readiness}%` }}
                       />
                     </div>
                     <span
-                      className="text-[11px] font-mono font-bold w-7 text-right"
-                      style={{ color: fc }}
+                      className={`text-[11px] font-mono font-bold w-7 text-right ${readinessTextClass(feat.readiness)}`}
                     >
                       {feat.readiness}%
                     </span>
@@ -568,7 +558,7 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
 
                 {/* Expanded PM analysis */}
                 {isExpanded && (
-                  <div className="px-3.5 pb-4 animate-fade-in" style={{ paddingLeft: 48 }}>
+                  <div className="px-3.5 pb-4 animate-fade-in pl-12">
                     <div className="flex flex-col gap-3">
                       {/* 1. Description */}
                       <div className="text-xs text-mc-text-1 leading-relaxed">
@@ -578,8 +568,7 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
                       {/* 2. Why This Matters */}
                       {feat.whyMatters && (
                         <div
-                          className="px-3 py-2.5 rounded-md bg-mc-cyan-muted"
-                          style={{ borderLeft: `3px solid ${t.cyan}` }}
+                          className="px-3 py-2.5 rounded-md bg-mc-cyan-muted border-l-[3px] border-mc-cyan"
                         >
                           <div className="text-[9px] font-mono font-semibold text-mc-cyan uppercase mb-1">
                             Why this matters
@@ -593,8 +582,7 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
                       {/* 3. Risk If Ignored */}
                       {feat.riskIfIgnored && (
                         <div
-                          className="px-3 py-2.5 rounded-md bg-mc-red-muted"
-                          style={{ borderLeft: `3px solid ${t.red}` }}
+                          className="px-3 py-2.5 rounded-md bg-mc-red-muted border-l-[3px] border-mc-red"
                         >
                           <div className="text-[9px] font-mono font-semibold text-mc-red uppercase mb-1">
                             Risk if ignored
@@ -620,18 +608,13 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
                           {feat.actionPlan.map((ap, ai) => (
                             <div
                               key={ai}
-                              className="flex items-center gap-2 py-1.5"
-                              style={{ borderTop: ai > 0 ? `1px solid rgba(255,255,255,0.04)` : "none" }}
+                              className={`flex items-center gap-2 py-1.5 ${ai > 0 ? "border-t border-mc-border-0" : ""}`}
                             >
                               <span className="text-[10px] font-mono text-mc-text-3 w-3.5 text-right flex-shrink-0">
                                 {ai + 1}.
                               </span>
                               <span
-                                className="text-[8px] font-semibold font-mono uppercase px-[5px] py-[1px] rounded flex-shrink-0"
-                                style={{
-                                  color: IMPACT_COLOR[ap.impact] ?? t.text3,
-                                  background: (IMPACT_COLOR[ap.impact] ?? t.text3) + "15",
-                                }}
+                                className={`text-[8px] font-semibold font-mono uppercase px-[5px] py-[1px] rounded flex-shrink-0 ${impactBadgeClasses(ap.impact)}`}
                               >
                                 {ap.impact}
                               </span>
@@ -660,13 +643,13 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
                       {/* 5. Stats + Last Session */}
                       <div className="flex items-center gap-3.5 flex-wrap">
                         {[
-                          { label: "Files", value: String(feat.files), color: t.text0 },
-                          { label: "Tests", value: String(feat.tests), color: feat.tests === 0 ? t.red : feat.tests < 3 ? t.amber : t.green },
-                          { label: "Momentum", value: String(feat.momentum?.commits ?? 0), color: (feat.momentum?.commits ?? 0) > 3 ? t.green : (feat.momentum?.commits ?? 0) > 0 ? t.text1 : t.red, suffix: ` commits ${feat.momentum?.period ?? ""}` },
+                          { label: "Files", value: String(feat.files), colorClass: "text-mc-text-0" },
+                          { label: "Tests", value: String(feat.tests), colorClass: feat.tests === 0 ? "text-mc-red" : feat.tests < 3 ? "text-mc-amber" : "text-mc-green" },
+                          { label: "Momentum", value: String(feat.momentum?.commits ?? 0), colorClass: (feat.momentum?.commits ?? 0) > 3 ? "text-mc-green" : (feat.momentum?.commits ?? 0) > 0 ? "text-mc-text-1" : "text-mc-red", suffix: ` commits ${feat.momentum?.period ?? ""}` },
                         ].map((s, i) => (
                           <div key={i} className="flex items-center gap-1">
                             <span className="text-[9px] font-mono text-mc-text-3 uppercase">{s.label}</span>
-                            <span className="text-xs font-mono font-bold" style={{ color: s.color }}>{s.value}</span>
+                            <span className={`text-xs font-mono font-bold ${s.colorClass}`}>{s.value}</span>
                             {s.suffix && <span className="text-[9px] text-mc-text-3">{s.suffix}</span>}
                           </div>
                         ))}
@@ -688,7 +671,8 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
 
                             if (haveNum !== null && needNum !== null && needNum > 0) {
                               // Numeric mode: render dots
-                              const dotColor = haveNum >= needNum ? t.green : haveNum > 0 ? t.amber : t.red;
+                              const dotBgClass = haveNum >= needNum ? "bg-mc-green" : haveNum > 0 ? "bg-mc-amber" : "bg-mc-red";
+                              const dotTextClass = haveNum >= needNum ? "text-mc-green" : haveNum > 0 ? "text-mc-amber" : "text-mc-red";
                               return (
                                 <div key={i} className="flex items-center gap-1">
                                   <span className="text-[9px] font-mono text-mc-text-3 w-[72px] text-right">
@@ -698,8 +682,7 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
                                     {Array.from({ length: haveNum }).map((_, j) => (
                                       <span
                                         key={`f${j}`}
-                                        className="w-[7px] h-[7px] rounded-full"
-                                        style={{ background: dotColor }}
+                                        className={`w-[7px] h-[7px] rounded-full ${dotBgClass}`}
                                       />
                                     ))}
                                     {Array.from({ length: Math.max(0, needNum - haveNum) }).map((_, j) => (
@@ -709,7 +692,7 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
                                       />
                                     ))}
                                   </div>
-                                  <span className="text-[9px] font-mono" style={{ color: dotColor }}>
+                                  <span className={`text-[9px] font-mono ${dotTextClass}`}>
                                     {haveNum}/{needNum}
                                   </span>
                                 </div>
@@ -744,8 +727,7 @@ export function ProductMapTab({ onFix }: ProductMapTabProps) {
                               {feat.integrations.map((intg, i) => (
                                 <span
                                   key={i}
-                                  className="text-[9px] font-semibold font-mono uppercase px-[7px] py-[2px] rounded"
-                                  style={{ color: t.cyan, background: t.cyan + "12" }}
+                                  className="text-[9px] font-semibold font-mono uppercase px-[7px] py-[2px] rounded text-mc-cyan bg-mc-cyan-muted"
                                 >
                                   {intg}
                                 </span>

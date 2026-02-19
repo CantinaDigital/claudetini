@@ -695,8 +695,7 @@ export function GitTab({ projectPath, isActive = true, onReport, onShowConfirm }
                     key={`${commit.hash}-${i}`}
                     className={`flex items-center gap-2.5 px-4 py-[6px] ${
                       isLinked ? "bg-mc-accent-muted" : ""
-                    } ${i < Math.min(commits.length, 20) - 1 ? "border-b border-mc-border-0" : ""}`}
-                    style={{ opacity: commit.merge ? 0.5 : 1 }}
+                    } ${i < Math.min(commits.length, 20) - 1 ? "border-b border-mc-border-0" : ""} ${commit.merge ? "opacity-50" : ""}`}
                   >
                     {/* Branch dot with glow when linked */}
                     <div

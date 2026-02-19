@@ -37,35 +37,16 @@ class RootErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{
-          minHeight: '100vh',
-          background: '#0a0a0f',
-          color: '#e4e4e7',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontFamily: 'Inter, system-ui, sans-serif',
-          padding: 32,
-        }}>
-          <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 12 }}>
+        <div className="min-h-screen bg-mc-bg text-mc-text-1 flex flex-col items-center justify-center font-sans p-8">
+          <div className="text-2xl font-bold mb-3">
             Something went wrong
           </div>
-          <div style={{ fontSize: 13, color: '#8b8b94', marginBottom: 24, maxWidth: 480, textAlign: 'center' }}>
+          <div className="text-[13px] text-mc-text-2 mb-6 max-w-[480px] text-center">
             {this.state.error?.message || 'An unexpected error occurred'}
           </div>
           <button
             onClick={() => window.location.reload()}
-            style={{
-              background: '#3b82f6',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 8,
-              padding: '10px 24px',
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
+            className="bg-mc-accent text-white border-none rounded-lg px-6 py-2.5 text-sm font-semibold cursor-pointer"
           >
             Reload Application
           </button>
@@ -121,6 +102,7 @@ function AppRouterInner() {
       useProjectManager.setState({
         error: err instanceof Error ? err.message : "Failed to register project",
       });
+      throw err; // Rethrow so callers (e.g. handleRegisterDiscovered) know it failed
     } finally {
       setRegistering(false);
     }

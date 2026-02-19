@@ -39,7 +39,6 @@ type FallbackPhase = "idle" | "queued" | "running" | "complete" | "failed";
 
 let timerInterval: ReturnType<typeof setInterval> | null = null;
 let eventSource: EventSource | null = null;
-let projectPathRef: string | null = null;
 let sseJobId: string | null = null; // Tracks job_id received from SSE stream start
 let lastTailLineCount = 0; // Tracks last line count for output tailing during polling
 
@@ -249,8 +248,6 @@ export const useDispatchManager = create<DispatchManagerState>((set, get) => ({
     // Clean up any lingering resources from previous dispatch
     clearTimer();
     closeEventSource();
-
-    projectPathRef = projectPath;
 
     // Start dispatch state
     set({
@@ -597,6 +594,7 @@ export const useDispatchManager = create<DispatchManagerState>((set, get) => ({
     set({
       phase: "idle",
       isDispatching: false,
+      dispatchFailed: false,
       startedAt: null,
       elapsedSeconds: 0,
       progressPct: 0,
@@ -978,23 +976,13 @@ async function handleStreamCompletion(
       const dispatchContext = state.lastContext;
       completeDispatch();
 
-      if (dispatchContext?.itemRef?.text && projectPathRef) {
-        try {
-          await api.toggleRoadmapItem(
-            projectPathRef,
-            dispatchContext.itemRef.text
-          );
-          toast.success(
-            "Task Completed",
-            `Marked "${dispatchContext.itemRef.text}" as done`
-          );
-        } catch (error) {
-          console.error("Failed to auto-mark task as done:", error);
-          toast.success(
-            "Dispatch Successful",
-            "Claude Code completed the task."
-          );
-        }
+      // Do NOT toggle roadmap items here — the App.tsx useEffect handles
+      // auto-marking exclusively to avoid double-toggle (SSE + App.tsx both firing).
+      if (dispatchContext?.itemRef?.text) {
+        toast.success(
+          "Task Completed",
+          `"${dispatchContext.itemRef.text}" dispatch finished`
+        );
       } else {
         toast.success(
           "Dispatch Successful",

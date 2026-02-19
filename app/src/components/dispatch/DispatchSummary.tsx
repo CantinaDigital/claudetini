@@ -21,6 +21,7 @@ interface DispatchSummaryProps {
   onMarkComplete: () => void;
   onCommit: () => void;
   onClose: () => void;
+  onIterate?: () => void;
   // Claude Code output tail (shown when errors exist)
   outputTail?: string | null;
 }
@@ -36,6 +37,7 @@ export function DispatchSummary({
   onMarkComplete,
   onCommit,
   onClose,
+  onIterate,
   outputTail,
 }: DispatchSummaryProps) {
   const [showOutput, setShowOutput] = useState(false);
@@ -52,25 +54,51 @@ export function DispatchSummary({
       onClick={onClose}
     >
       <div
-        className="bg-mc-surface-1 rounded-xl px-7 py-6 border border-mc-border-1 w-[580px] max-w-[90vw] max-h-[80vh] overflow-y-auto"
+        className="bg-mc-surface-1 rounded-xl border border-mc-border-1 w-[580px] max-w-[90vw] max-h-[80vh] overflow-y-auto overflow-x-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-4">
-          <span className="text-2xl">
-            {success ? "✓" : hasErrors ? "⚠" : "ℹ"}
-          </span>
-          <div className="flex-1">
-            <div className="text-lg font-bold text-mc-text-0">
-              {headerTitle}
-            </div>
-            {summaryMessage && (
-              <div className="text-[11px] text-mc-text-3 mt-1">
-                <InlineMarkdown>{summaryMessage}</InlineMarkdown>
-              </div>
+        {/* Colored header bar */}
+        <div
+          className={`px-7 py-5 rounded-t-xl ${
+            success
+              ? "bg-mc-green-muted border-t-4 border-mc-green"
+              : hasErrors
+                ? "bg-mc-red-muted border-t-4 border-mc-red"
+                : "bg-mc-surface-2 border-t-4 border-mc-border-2"
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            {/* SVG status icon */}
+            {success ? (
+              <svg className="w-7 h-7 text-mc-green shrink-0" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                <path d="M8 12l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            ) : hasErrors ? (
+              <svg className="w-7 h-7 text-mc-red shrink-0" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                <path d="M15 9l-6 6M9 9l6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            ) : (
+              <svg className="w-7 h-7 text-mc-cyan shrink-0" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                <path d="M12 8v4M12 16h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
             )}
+            <div className="flex-1">
+              <div className="text-lg font-bold text-mc-text-0">
+                {headerTitle}
+              </div>
+              {summaryMessage && (
+                <div className="text-[11px] text-mc-text-3 mt-1">
+                  <InlineMarkdown>{summaryMessage}</InlineMarkdown>
+                </div>
+              )}
+            </div>
           </div>
         </div>
+
+        <div className="px-7 py-6">
 
         {/* Error output (when hasErrors and we have output) */}
         {hasErrors && outputTail && (
@@ -184,6 +212,18 @@ export function DispatchSummary({
               </Button>
             </div>
           )}
+
+          {/* Iterate button for failures */}
+          {(!success || hasErrors) && onIterate && (
+            <Button primary onClick={onIterate} className="w-full mt-1">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 4v6h6" />
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+              </svg>
+              Iterate
+            </Button>
+          )}
+        </div>
         </div>
       </div>
     </div>

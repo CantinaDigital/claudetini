@@ -1,4 +1,3 @@
-import { t } from "../../styles/tokens";
 import { Button } from "../ui/Button";
 import type { FallbackProvider } from "../../stores/settingsStore";
 
@@ -44,8 +43,7 @@ export function FallbackModal({
           <div className="flex items-center gap-2.5">
             {isRunning && (
               <span
-                className="w-3.5 h-3.5 rounded-full border-2 border-mc-border-1 shrink-0 inline-block"
-                style={{ borderTopColor: t.cyan, animation: "cc-spin 0.9s linear infinite" }}
+                className="w-3.5 h-3.5 rounded-full border-2 border-mc-border-1 border-t-mc-cyan shrink-0 inline-block animate-[cc-spin_0.9s_linear_infinite]"
               />
             )}
             <div className={`text-sm font-bold ${isRunning ? "text-mc-cyan" : "text-mc-text-0"}`}>

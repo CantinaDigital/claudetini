@@ -14,30 +14,29 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# Add parent claudetini project to path for core modules
-# The app directory is inside claudetini/
-# We add the claudetini root (not src) to preserve package hierarchy
-# This allows relative imports like "from ..utils" to work properly
-_this_file = Path(__file__).resolve()
-# Path: .../claudetini/app/python-sidecar/sidecar/api/server.py
-# We want: .../claudetini
-_claudetini_root = _this_file.parent.parent.parent.parent.parent
+# Skip path manipulation when running as a PyInstaller bundle.
+# PyInstaller freezes all modules into the binary; sys.path tweaks are unnecessary.
+if not getattr(sys, "frozen", False):
+    _this_file = Path(__file__).resolve()
+    # Path: .../claudetini/app/python-sidecar/sidecar/api/server.py
+    # We want: .../claudetini
+    _claudetini_root = _this_file.parent.parent.parent.parent.parent
 
-# Also try finding it relative to cwd if __file__ doesn't resolve correctly
-if not (_claudetini_root / "src" / "core").exists():
-    _cwd = Path.cwd().resolve()
-    if _cwd.name == "python-sidecar":
-        _claudetini_root = _cwd.parent.parent
-    elif _cwd.name == "app":
-        _claudetini_root = _cwd.parent
-    elif _cwd.name == "sidecar" and _cwd.parent.name == "python-sidecar":
-        _claudetini_root = _cwd.parent.parent.parent
+    # Also try finding it relative to cwd if __file__ doesn't resolve correctly
+    if not (_claudetini_root / "src" / "core").exists():
+        _cwd = Path.cwd().resolve()
+        if _cwd.name == "python-sidecar":
+            _claudetini_root = _cwd.parent.parent
+        elif _cwd.name == "app":
+            _claudetini_root = _cwd.parent
+        elif _cwd.name == "sidecar" and _cwd.parent.name == "python-sidecar":
+            _claudetini_root = _cwd.parent.parent.parent
 
-if (_claudetini_root / "src" / "core").exists():
-    # Insert at position 0 to take precedence
-    sys.path.insert(0, str(_claudetini_root))
-else:
-    print(f"WARNING: Could not find claudetini root. Tried: {_claudetini_root}")
+    if (_claudetini_root / "src" / "core").exists():
+        # Insert at position 0 to take precedence
+        sys.path.insert(0, str(_claudetini_root))
+    else:
+        print(f"WARNING: Could not find claudetini root. Tried: {_claudetini_root}")
 
 from .routes import (
     bootstrap,
@@ -158,7 +157,11 @@ def main():
     log_config["formatters"]["access"]["datefmt"] = "%H:%M:%S"
     log_config["formatters"]["default"]["datefmt"] = "%H:%M:%S"
 
-    uvicorn.run(app, host=args.host, port=args.port, log_level="info", workers=2, log_config=log_config)
+    # Use workers=1 in frozen (PyInstaller) mode to avoid multiprocessing issues.
+    # PyInstaller bundles require freeze_support() for workers>1, and single-worker
+    # is simpler and sufficient for a local desktop sidecar.
+    worker_count = 1 if getattr(sys, "frozen", False) else 2
+    uvicorn.run(app, host=args.host, port=args.port, log_level="info", workers=worker_count, log_config=log_config)
 
 
 if __name__ == "__main__":

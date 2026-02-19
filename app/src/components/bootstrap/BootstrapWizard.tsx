@@ -76,8 +76,9 @@ export function BootstrapWizard({
     if (success) {
       onComplete();
     } else {
-      // Stay on result screen to show error
-      setScreen('result');
+      // Reset state and go back to estimate screen so user can retry
+      setSessionId(null);
+      setScreen('estimate');
     }
   };
 

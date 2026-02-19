@@ -729,7 +729,7 @@ export function OverviewTab({
         <div className="flex items-center gap-[18px]">
           {/* 48px progress ring */}
           <div className="relative w-12 h-12 shrink-0">
-            <svg width="48" height="48" viewBox="0 0 48 48" style={{ transform: "rotate(-90deg)" }}>
+            <svg width="48" height="48" viewBox="0 0 48 48" className="-rotate-90">
               <circle cx="24" cy="24" r="20" fill="none" stroke={t.surface3} strokeWidth="3.5" />
               <circle
                 cx="24"

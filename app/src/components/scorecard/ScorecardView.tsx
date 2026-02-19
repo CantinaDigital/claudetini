@@ -301,10 +301,9 @@ export function ScorecardView({
       <div className="px-8 py-7 rounded-[14px] bg-mc-surface-1 border border-mc-border-0 mb-6 text-center">
         <div className="flex justify-center mb-4">
           {scanning ? (
-            <div className="relative" style={{ width: 120, height: 120 }}>
+            <div className="relative w-[120px] h-[120px]">
               <div
-                className="w-full h-full rounded-full border-[6px] border-mc-surface-3"
-                style={{ borderTopColor: t.accent, animation: "spin 1s linear infinite" }}
+                className="w-full h-full rounded-full border-[6px] border-mc-surface-3 border-t-mc-accent animate-spin"
               />
               <div className="absolute inset-0 flex items-center justify-center">
                 <span className="text-mc-text-3 text-xs font-mono">Scanning</span>
@@ -397,8 +396,7 @@ export function ScorecardView({
                     return (
                       <div
                         key={ii}
-                        className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-mc-surface-2 border border-mc-border-0"
-                        style={{ marginBottom: ii < tier.items.length - 1 ? 4 : 0 }}
+                        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-mc-surface-2 border border-mc-border-0 ${ii < tier.items.length - 1 ? "mb-1" : ""}`}
                       >
                         <div className="w-[18px] h-[18px] rounded bg-mc-surface-3 animate-pulse shrink-0" />
                         <span className="text-[13px] font-semibold text-mc-text-3">{item.name}</span>
@@ -410,12 +408,9 @@ export function ScorecardView({
                   return (
                     <div
                       key={ii}
-                      className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-mc-surface-2"
+                      className={`flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-mc-surface-2 animate-fade-in ${ii < tier.items.length - 1 ? "mb-1" : ""}`}
                       style={{
-                        marginBottom: ii < tier.items.length - 1 ? 4 : 0,
                         border: `1px solid ${item.passed ? t.border0 : tier.borderColor}`,
-                        opacity: 0,
-                        animation: `fadeIn 0.3s ease forwards`,
                       }}
                     >
                       {/* Checkbox for failed items / green circle for passing */}

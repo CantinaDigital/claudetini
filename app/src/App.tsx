@@ -1,6 +1,6 @@
 import { Component, useEffect, useState } from "react";
 import type { ErrorInfo, ReactNode } from "react";
-import { TabBar } from "./components/layout/TabBar";
+import { DashboardHeader } from "./components/layout/DashboardHeader";
 import { Dashboard } from "./components/layout/Dashboard";
 import { OverviewTab } from "./components/overview/OverviewTab";
 import { RoadmapTab } from "./components/roadmap/RoadmapTab";
@@ -688,7 +688,7 @@ Only modify the minimum files needed. Run the ${gateName.toLowerCase()} gate aft
 
   return (
     <Dashboard>
-      <TabBar tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} />
+      <DashboardHeader tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} />
       <main className="py-5 px-6 max-w-full flex-1 overflow-y-auto">
         {!backendConnected && (
           <div className="bg-mc-amber-muted border border-mc-amber-border rounded-lg py-2 px-3 mb-4 text-xs text-mc-amber">
@@ -823,6 +823,17 @@ Only modify the minimum files needed. Run the ${gateName.toLowerCase()} gate aft
             setShowDispatchSummary(false);
             setDispatchSummary(null);
             useDispatchManager.getState().reset();
+          }}
+          onIterate={() => {
+            const summary = dispatchSummary.summary_message || "Task did not complete successfully";
+            const errorContext = dispatchOutputTail
+              ? `\nRecent output:\n${dispatchOutputTail.slice(-500)}`
+              : "";
+            const iteratePrompt = `The previous dispatch had issues. Try a different approach.\n\nPrevious summary: ${summary}${errorContext}\n\nPlease fix the issues and retry.`;
+            setShowDispatchSummary(false);
+            setDispatchSummary(null);
+            useDispatchManager.getState().reset();
+            void handleShowPreFlight(iteratePrompt, "standard", "overview");
           }}
         />
       )}

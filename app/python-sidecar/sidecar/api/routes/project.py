@@ -290,6 +290,22 @@ async def register_project(request: RegisterRequest) -> ProjectResponse:
     )
 
 
+class DiscoveredProjectResponse(BaseModel):
+    path: str
+    name: str
+    claude_hash: str
+
+
+@router.get("/discover")
+def discover_projects() -> list[DiscoveredProjectResponse]:
+    """Discover unregistered Claude Code projects."""
+    if not CORE_AVAILABLE:
+        return []
+    registry = ProjectRegistry.load_or_create()
+    discovered = registry.discover_unregistered()
+    return [DiscoveredProjectResponse(**d) for d in discovered]
+
+
 # IMPORTANT: This route MUST be defined BEFORE the generic /{project_id:path} route
 # because FastAPI matches routes in order of definition
 @router.get("/health/{project_id:path}")
